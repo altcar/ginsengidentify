@@ -1,0 +1,14 @@
+{
+  "classes": [
+    "jiegeng",
+    "renshen",
+    "xiyangshen"
+  ],
+  "num_classes": 3,
+  "test_loss": 0.9326010346412659,
+  "test_accuracy": 0.625,
+  "warmup_epochs": 5,
+  "finetune_epochs": 15,
+  "img_size": 224,
+  "elapsed_sec": 111.5
+}

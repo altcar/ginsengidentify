@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+.gradle/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# OS
+Thumbs.db
+desktop.ini
