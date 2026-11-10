@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">参三味识别</string>
+    <string name="widget_label">参三味 · 今日识别</string>
+    <string name="widget_description">连续打卡、今日进度和三类识别次数</string>
 </resources>

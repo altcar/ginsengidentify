@@ -12,11 +12,10 @@ android {
         applicationId = "com.example.ginsengidentifier"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+        versionCode = 2
+        versionName = "2.0"
     }
 
     buildTypes {
@@ -56,6 +55,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
@@ -72,6 +72,15 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.lifecycle.service)
+
+    // 常驻扫描 / 悬浮窗 / 实时流
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.java.websocket)
+
+    // Duolingo 风格桌面小组件
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.support)

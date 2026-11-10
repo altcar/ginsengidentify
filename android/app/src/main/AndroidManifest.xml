@@ -3,6 +3,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- 常驻扫描（前台服务）+ 悬浮窗 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -40,12 +50,44 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden|uiMode"
+            android:launchMode="singleTask"
+            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.GinsengIdentifier">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 实时扫描：前台服务持相机，结果推给通知 / 悬浮窗 / WebSocket / 小组件 -->
+        <service
+            android:name=".scanner.ScannerService"
+            android:exported="false"
+            android:foregroundServiceType="camera" />
+
+        <!-- 悬浮窗（YouTube 式小窗） -->
+        <service
+            android:name=".scanner.OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating ginseng scan result bubble" />
+        </service>
+
+        <!-- Duolingo 风格桌面小组件 -->
+        <receiver
+            android:name=".widget.GinsengWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/ginseng_widget_info" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

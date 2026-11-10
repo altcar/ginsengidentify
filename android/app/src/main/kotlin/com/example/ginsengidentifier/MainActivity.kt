@@ -1,56 +1,47 @@
 package com.example.ginsengidentifier
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,20 +49,27 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
+import com.example.ginsengidentifier.data.ScanStore
+import com.example.ginsengidentifier.notify.Notifications
+import com.example.ginsengidentifier.notify.ReminderWorker
+import com.example.ginsengidentifier.scanner.ModelHolder
+import com.example.ginsengidentifier.scanner.OverlayService
+import com.example.ginsengidentifier.scanner.ResultBus
+import com.example.ginsengidentifier.scanner.ScannerService
+import com.example.ginsengidentifier.scanner.StreamServer
+import com.example.ginsengidentifier.ui.ErrorScreen
+import com.example.ginsengidentifier.ui.HomeScreen
+import com.example.ginsengidentifier.ui.LiveScreen
+import com.example.ginsengidentifier.ui.ResultScreen
 import com.example.ginsengidentifier.ui.theme.GinsengTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -81,60 +79,131 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        const val EXTRA_OPEN_SCANNER = "open_scanner"
+    }
+
     private lateinit var classifier: Classifier
+    private var inPip by mutableStateOf(false)
+    private var requestScan by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        classifier = Classifier(this)
-        classifier.load()
+        ScanStore.init(this)
+        Notifications.ensureChannels(this)
+        classifier = ModelHolder.get(this)
+
+        requestScan = intent?.getBooleanExtra(EXTRA_OPEN_SCANNER, false) ?: false
+
         setContent {
             GinsengTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    AppRoot(classifier)
+                    AppRoot(
+                        classifier = classifier,
+                        autoScan = requestScan,
+                        onAutoScanConsumed = { requestScan = false },
+                        inPip = inPip,
+                        onEnterPip = { enterPip() },
+                    )
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        classifier.close()
-        super.onDestroy()
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_SCANNER, false)) requestScan = true
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+    }
+
+    private fun enterPip() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(9, 16))
+                .build()
+            enterPictureInPictureMode(params)
+        } catch (t: Throwable) {
+            Log.w("MainActivity", "PiP ä¸å¯ç”¨: ${t.message}")
+        }
     }
 }
 
 private sealed interface Screen {
     data object Home : Screen
+    data object Live : Screen
     data class Result(val bitmap: Bitmap, val predictions: List<Classifier.Prediction>) : Screen
     data class Error(val msg: String) : Screen
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppRoot(classifier: Classifier) {
+fun AppRoot(
+    classifier: Classifier,
+    autoScan: Boolean,
+    onAutoScanConsumed: () -> Unit,
+    inPip: Boolean,
+    onEnterPip: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val stats by ScanStore.stats.collectAsState()
+    val latest by ResultBus.latest.collectAsState()
+    val scanning by ResultBus.scanning.collectAsState()
+
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var loading by remember { mutableStateOf(false) }
-    // 用 String 存，配置变更（旋转/深色模式切换）后相机回来的 Uri 不会丢
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var subscribed by remember { mutableStateOf(ScanStore.isSubscribed()) }
+    var streamEnabled by remember { mutableStateOf(ScanStore.isStreamEnabled()) }
+    var overlayEnabled by remember { mutableStateOf(false) }
+    var streamClients by remember { mutableIntStateOf(0) }
     val modelReady = remember { classifier.isReady() }
+
+    // è®¢é˜…è€…æ•°é‡è½®è¯¢ï¼ˆWebSocket å®¢æˆ·ç«¯ï¼‰
+    LaunchedEffect(streamEnabled, scanning) {
+        while (true) {
+            streamClients = if (streamEnabled) StreamServer.clientCount() else 0
+            delay(1200)
+        }
+    }
+
+    fun startScan() {
+        if (!classifier.isReady()) {
+            screen = Screen.Error(classifier.lastError ?: "æ¨¡åž‹æœªåŠ è½½")
+            return
+        }
+        ScannerService.start(context)
+        screen = Screen.Live
+    }
+
+    fun stopScan() {
+        ScannerService.stop(context)
+        OverlayService.hide(context)
+        overlayEnabled = false
+        screen = Screen.Home
+    }
 
     fun startClassify(uri: Uri) {
         if (!classifier.isReady()) {
-            screen = Screen.Error(classifier.lastError ?: "模型未加载")
+            screen = Screen.Error(classifier.lastError ?: "æ¨¡åž‹æœªåŠ è½½")
             loading = false
             return
         }
         loading = true
-        // 解码 + 推理都在 IO 线程，主线程只负责渲染，避免 ANR
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                classifyFromUri(context, classifier, uri)
-            }
+            val result = withContext(Dispatchers.IO) { classifyFromUri(context, classifier, uri) }
             screen = result
             loading = false
         }
@@ -142,396 +211,230 @@ fun AppRoot(classifier: Classifier) {
 
     val cameraLauncher = rememberLauncherForActivityResult(TakePicture()) { success ->
         val uri = cameraUri?.let(Uri::parse)
-        if (success && uri != null) {
-            startClassify(uri)
-        } else {
-            loading = false
-        }
-    }
-
-    fun launchCamera() {
-        try {
-            val uri = createCameraUri(context)
-            cameraUri = uri.toString()
-            cameraLauncher.launch(uri)
-        } catch (e: ActivityNotFoundException) {
-            // Android 11+ 没有 <queries> 声明时，这里会抛 ActivityNotFoundException 直接闪退
-            Log.e("MainActivity", "no camera app", e)
-            screen = Screen.Error("没有找到可用的相机应用")
-        } catch (t: Throwable) {
-            Log.e("MainActivity", "launch camera failed", t)
-            screen = Screen.Error("无法打开相机：${t.message ?: t.javaClass.simpleName}")
-        }
+        if (success && uri != null) startClassify(uri) else loading = false
     }
 
     val cameraPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) launchCamera() else screen = Screen.Error("需要相机权限才能拍照识别")
+        if (granted) startScan() else screen = Screen.Error("éœ€è¦ç›¸æœºæƒé™æ‰èƒ½å®žæ—¶æ‰«æ")
+    }
+
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            ScanStore.setSubscribed(true)
+            subscribed = true
+            ReminderWorker.schedule(context)
+        } else {
+            ScanStore.setSubscribed(false)
+            subscribed = false
+        }
+    }
+
+    val overlayPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (OverlayService.canDraw(context)) {
+            OverlayService.show(context)
+            overlayEnabled = true
+        } else {
+            overlayEnabled = false
+        }
     }
 
     val pickLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) startClassify(uri)
+    ) { uri -> if (uri != null) startClassify(uri) }
+
+    fun launchCameraShot() {
+        try {
+            val uri = createCameraUri(context)
+            cameraUri = uri.toString()
+            cameraLauncher.launch(uri)
+        } catch (e: ActivityNotFoundException) {
+            screen = Screen.Error("æ²¡æœ‰æ‰¾åˆ°å¯ç”¨çš„ç›¸æœºåº”ç”¨")
+        } catch (t: Throwable) {
+            screen = Screen.Error("æ— æ³•æ‰“å¼€ç›¸æœºï¼š${t.message}")
+        }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("人参 · 西洋参 · 桔梗 识别") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-            )
-        },
-    ) { inner ->
-        Box(Modifier.padding(inner).fillMaxSize()) {
-            when (val s = screen) {
-                Screen.Home -> HomeContent(
-                    modelReady = modelReady,
-                    onCamera = {
-                        if (ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED
-                        ) {
-                            launchCamera()
-                        } else {
-                            cameraPermLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    },
-                    onPick = {
-                        pickLauncher.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
+    // é€šçŸ¥ç‚¹è¿›æ¥ / å°ç»„ä»¶ç‚¹è¿›æ¥ -> ç›´æŽ¥å¼€æ‰«æ
+    LaunchedEffect(autoScan) {
+        if (autoScan) {
+            onAutoScanConsumed()
+            if (ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+            ) startScan() else cameraPermLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    if (inPip || screen is Screen.Live) {
+        LiveScreen(
+            scanning = scanning,
+            latest = latest,
+            stats = stats,
+            overlayEnabled = overlayEnabled,
+            pipMode = inPip,
+            onStop = { stopScan() },
+            onBack = { stopScan() },
+            onEnterPip = onEnterPip,
+            onToggleOverlay = { want ->
+                if (want) {
+                    if (OverlayService.canDraw(context)) {
+                        OverlayService.show(context)
+                        overlayEnabled = true
+                    } else {
+                        try {
+                            overlayPermLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}"),
+                                )
                             )
+                        } catch (t: Throwable) {
+                            screen = Screen.Error("æ— æ³•æ‰“å¼€æ‚¬æµ®çª—æƒé™è®¾ç½®")
+                        }
+                    }
+                } else {
+                    OverlayService.hide(context)
+                    overlayEnabled = false
+                }
+            },
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("å‚ä¸‰å‘³è¯†åˆ«") },
+                    navigationIcon = {
+                        com.example.ginsengidentifier.ui.LogoMark(
+                            Modifier
+                                .padding(start = 16.dp)
+                                .size(30.dp)
                         )
                     },
-                )
-
-                is Screen.Result -> ResultContent(
-                    bitmap = s.bitmap,
-                    predictions = s.predictions,
-                    onBack = { screen = Screen.Home },
-                )
-
-                is Screen.Error -> ErrorContent(s.msg) { screen = Screen.Home }
-            }
-            if (loading) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeContent(
-    modelReady: Boolean,
-    onCamera: () -> Unit,
-    onPick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            "端侧识别三味常见中药材",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "支持识别：人参、西洋参、桔梗\n模型本地运行，无需联网",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        if (!modelReady) {
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.size(6.dp))
-                Text(
-                    "模型加载失败，识别不可用",
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp,
-                )
-            }
-        }
-        Spacer(Modifier.height(48.dp))
-        Button(
-            onClick = onCamera,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Icon(Icons.Filled.PhotoCamera, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text("拍照识别", fontSize = 18.sp)
-        }
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onPick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
-        ) {
-            Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
-            Spacer(Modifier.size(8.dp))
-            Text("从相册选择", fontSize = 18.sp)
-        }
-        Spacer(Modifier.height(48.dp))
-        Text(
-            "提示：将药材放在白纸上，自然光下拍摄效果最好。",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.outline,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun ResultContent(
-    bitmap: Bitmap,
-    predictions: List<Classifier.Prediction>,
-    onBack: () -> Unit,
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        item {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Selected image",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-            )
-            Spacer(Modifier.height(20.dp))
-        }
-
-        if (predictions.isEmpty()) {
-            item {
-                Text("模型未就绪或推理失败，请重新识别。", textAlign = TextAlign.Center)
-                Spacer(Modifier.height(20.dp))
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                    Text("返回")
-                }
-            }
-            return@LazyColumn
-        }
-
-        val top = predictions.first()
-        val lowConfidence = top.confidence < Classifier.LOW_CONFIDENCE
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(4.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Column(Modifier.padding(20.dp)) {
-                    Text(
-                        "Top-1 识别结果",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        top.displayName,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        top.info,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "置信度 ${top.confidencePercent}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { top.confidence },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-        }
-
-        if (lowConfidence) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
                     ),
-                ) {
-                    Row(
-                        Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                )
+            },
+        ) { inner ->
+            Box(Modifier.padding(inner)) {
+                when (val s = screen) {
+                    Screen.Home -> HomeScreen(
+                        stats = stats,
+                        modelReady = modelReady,
+                        subscribed = subscribed,
+                        streamEnabled = streamEnabled,
+                        streamClients = streamClients,
+                        overlayEnabled = overlayEnabled,
+                        onStartScan = {
+                            if (ContextCompat.checkSelfPermission(
+                                    context, Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) startScan()
+                            else cameraPermLauncher.launch(Manifest.permission.CAMERA)
+                        },
+                        onCamera = { launchCameraShot() },
+                        onPick = {
+                            pickLauncher.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                        onToggleSubscribe = { want ->
+                            if (!want) {
+                                ScanStore.setSubscribed(false)
+                                subscribed = false
+                                ReminderWorker.cancel(context)
+                            } else if (Notifications.canPost(context)) {
+                                ScanStore.setSubscribed(true)
+                                subscribed = true
+                                ReminderWorker.schedule(context)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                ScanStore.setSubscribed(true)
+                                subscribed = true
+                                ReminderWorker.schedule(context)
+                            }
+                        },
+                        onToggleStream = { want ->
+                            ScanStore.setStreamEnabled(want)
+                            streamEnabled = want
+                            if (want) StreamServer.start() else StreamServer.stop()
+                        },
+                        onToggleOverlay = { want ->
+                            if (!want) {
+                                OverlayService.hide(context)
+                                overlayEnabled = false
+                            } else if (OverlayService.canDraw(context)) {
+                                OverlayService.show(context)
+                                overlayEnabled = true
+                            } else {
+                                try {
+                                    overlayPermLauncher.launch(
+                                        Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:${context.packageName}"),
+                                        )
+                                    )
+                                } catch (t: Throwable) {
+                                    screen = Screen.Error("æ— æ³•æ‰“å¼€æ‚¬æµ®çª—æƒé™è®¾ç½®")
+                                }
+                            }
+                        },
+                    )
+
+                    is Screen.Result -> ResultScreen(
+                        bitmap = s.bitmap,
+                        predictions = s.predictions,
+                        onBack = { screen = Screen.Home },
+                    )
+
+                    is Screen.Error -> ErrorScreen(s.msg) { screen = Screen.Home }
+                    Screen.Live -> Unit
+                }
+
+                if (loading) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.35f)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            Icons.Filled.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(Modifier.size(8.dp))
-                        Text(
-                            "置信度偏低，这张图可能不属于这三类。建议换个角度重拍，" +
-                                "或把药材放在纯色背景上。",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
-                Spacer(Modifier.height(16.dp))
             }
-        }
-
-        item {
-            Text(
-                "全部候选",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
-        items(predictions) { p ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                elevation = CardDefaults.cardElevation(1.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        p.displayName,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 16.sp,
-                    )
-                    Text(
-                        p.confidencePercent,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            }
-        }
-
-        item {
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("再拍一张")
-            }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "免责声明：本应用仅作学习演示，不构成医疗或购药建议。",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
 
-@Composable
-private fun ErrorContent(msg: String, onBack: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("出错了：$msg", textAlign = TextAlign.Center)
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onBack) { Text("返回") }
-    }
-}
+/** é¡¶æ å›¾æ ‡ç”¨å°å†…è¾¹è·ï¼Œé¿å…å†å¼•å…¥ Dp å¸¸é‡ã€‚ */
+
+/** é¡¶æ å›¾æ ‡ç”¨å°å†…è¾¹è·ï¼Œé¿å…å†å¼•å…¥ Dp å¸¸é‡ã€‚ */
 
 // ---------- helpers ----------
 
-/**
- * 解码 + 旋转 + 推理。全程在 IO 线程执行。
- * 任何异常都转成 Screen.Error，绝不让异常逃到主线程。
- */
-private fun classifyFromUri(
-    context: Context,
-    classifier: Classifier,
-    uri: Uri,
-): Screen {
+private fun classifyFromUri(context: Context, classifier: Classifier, uri: Uri): Screen {
     return try {
         val bitmap = decodeSampled(context, uri)
-            ?: return Screen.Error("图片解码失败，或格式不受支持")
+            ?: return Screen.Error("å›¾ç‰‡è§£ç å¤±è´¥ï¼Œæˆ–æ ¼å¼ä¸å—æ”¯æŒ")
         val rotated = fixRotation(context, uri, bitmap)
         val preds = classifier.classify(rotated)
-        if (preds.isEmpty()) {
-            Screen.Error(classifier.lastError ?: "推理失败")
-        } else {
-            Screen.Result(rotated, preds)
-        }
+        if (preds.isEmpty()) Screen.Error(classifier.lastError ?: "æŽ¨ç†å¤±è´¥")
+        else Screen.Result(rotated, preds)
     } catch (t: Throwable) {
-        // OutOfMemoryError 也要接住，否则就是"点一下突然闪退"
         Log.e("MainActivity", "classify failed", t)
         Screen.Error(t.message ?: t.javaClass.simpleName)
     }
 }
 
-/**
- * 带降采样的解码：相机原图动辄 4000x3000，直接 decodeStream 会吃掉 48MB，
- * 低端机直接 OOM。这里先把短边压到 1600 以内，模型只需要 224。
- */
 private fun decodeSampled(context: Context, uri: Uri, maxSide: Int = 1600): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     context.contentResolver.openInputStream(uri)?.use {
@@ -540,9 +443,7 @@ private fun decodeSampled(context: Context, uri: Uri, maxSide: Int = 1600): Bitm
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) {
-        sample *= 2
-    }
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
     val opts = BitmapFactory.Options().apply {
         inSampleSize = sample
         inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -561,7 +462,6 @@ private fun fixRotation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
             )
         } ?: ExifInterface.ORIENTATION_NORMAL
     } catch (t: Throwable) {
-        Log.w("MainActivity", "exif read failed: ${t.message}")
         ExifInterface.ORIENTATION_NORMAL
     }
     val degrees = when (orientation) {
@@ -576,26 +476,15 @@ private fun fixRotation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
             postRotate(degrees)
         }, true)
     } catch (t: Throwable) {
-        Log.w("MainActivity", "rotate failed: ${t.message}")
         bitmap
     }
 }
 
-/**
- * 建一个 FileProvider 能授权的缓存文件。
- * 注意：必须先 createNewFile()，否则某些相机应用拿到不存在的 Uri 会直接失败。
- */
 private fun createCameraUri(context: Context): Uri {
     val dir = File(context.cacheDir, "camera").apply { mkdirs() }
     val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-    dir.listFiles()?.forEach { f ->
-        if (f.isFile && f.lastModified() < cutoff) f.delete()
-    }
+    dir.listFiles()?.forEach { f -> if (f.isFile && f.lastModified() < cutoff) f.delete() }
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
     val file = File(dir, "IMG_$stamp.jpg").apply { createNewFile() }
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file,
-    )
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }

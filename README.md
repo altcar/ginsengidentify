@@ -7,19 +7,23 @@
 
 ---
 
-## 这一版改了什么
+## v2.0 新增
 
-旧版有三个硬伤，这一版逐条修了：
+| 功能 | 说明 |
+|---|---|
+| **实时扫描** | 前置前台服务持相机，CameraX `ImageAnalysis` 约 3 fps 连续推理，两帧确认防抖 |
+| **常驻通知栏** | 低优先级、静音、不可滑除的 ongoing 通知，实时显示当前结论 + 连续天数 |
+| **WebSocket 串流** | 手机内置 `ws://<手机IP>:8765`，一行 JS 就能订阅识别结果 |
+| **悬浮窗** | 类似 YouTube 小窗，浮在其他 App 之上，可拖动、可关闭 |
+| **画中画 (PiP)** | 退到小窗继续识别，只显示结论 + 置信度条 |
+| **推送订阅** | 识别结果提醒 + 每天 20:00 打卡提醒（WorkManager） |
+| **Duolingo 风小组件** | 桌面卡：连续天数、今日进度条、三类计数，点一下直接开扫 |
+| **新 Logo + 现代主题** | 手绘矢量「人参」标记（含 monochrome 主题图标）；玉色/奶油配色 + Material 3 动态取色 |
 
-| 问题 | 旧版 | 现在 |
-|---|---|---|
-| 数据集 | 195 张 Bing 抓图，混着广告/包装盒/重复图，test 只有 32 张 | 1086 张，来自 iNaturalist + Wikimedia Commons，CLIP 过滤 + 感知哈希去重 |
-| 准确率 | test **62.5%** | test **84.9%**（Keras）/ **85.5%**（TFLite 端到端） |
-| fine-tune 是假的 | `model.layers[2]` 取错了层，解冻的是数据增强层 | 按名字取 backbone，实测 40 层解冻 |
-| 点拍照就闪退 | Android 11+ 缺 `<queries>` → `ActivityNotFoundException` | 已补 `<queries>` + 异常兜底 |
-| 大图闪退 | 全尺寸 `decodeStream` → OOM | 按 `inSampleSize` 降采样到 1600px，捕获 `OutOfMemoryError` |
-| 卡顿/ANR | 解码 + 推理都在主线程 | 全部挪到 `Dispatchers.IO` |
-| 预处理不一致 | Android 拉伸变形，训练是等比缩放 | 两端统一「中心裁剪 → 双线性缩放到 224」 |
+> ⚠️ **"推送"的边界**：真正的服务端推送（FCM）需要 Firebase 项目 + `google-services.json`，
+> 本仓库没有凭据，所以没有引入 Firebase 插件（否则构建直接失败）。
+> 当前实现的是**本地通知**：识别结果提醒、每日打卡提醒，逻辑与 UI 全部就绪。
+> 接 FCM 的位置见 [「推送」](#推送) 一节。
 
 ---
 
@@ -29,98 +33,202 @@
 ginsengidentify/
 ├── README.md
 ├── requirements.txt
-├── dataset/
-│   ├── README.md                    ← 数据来源 / 许可 / 规模
-│   ├── raw/                         ← 旧版 Bing 图（来源不明，仅作商品图补充）
-│   ├── processed/{train,val,test}/  ← 训练用切分
-│   └── ...
-├── training/
-│   ├── fetch_dataset.py             ← 从 iNaturalist / Wikimedia 抓图（可断点续抓）
-│   ├── filter_clip.py               ← CLIP 半自动清洗 + 拍摄域标注
-│   ├── clean_strict.py              ← 解码校验 + dHash 去重（含跨类冲突）
-│   ├── prepare_data.py              ← 分层切分 70/15/15
-│   ├── train.py                     ← MobileNetV3Small 两阶段迁移学习
-│   ├── export_tflite.py             ← 导出 float16 TFLite
-│   └── test_tflite.py               ← 端到端验证（预处理与 Kotlin 完全一致）
+├── dataset/                          ← 数据 + 来源/许可说明
+├── training/                         ← 抓图 / CLIP 清洗 / 训练 / 评估
 ├── model/
-│   ├── ginseng_model.tflite         ← ⭐ 端上模型
-│   ├── ginseng_model.keras          ← 可继续训练
-│   ├── labels.txt
-│   ├── metrics.json                 ← 训练指标 + 混淆矩阵
-│   └── eval_tflite.json             ← 逐张推理明细
-├── scripts/
-│   ├── sync_assets.py               ← 同步 + 校验 assets
-│   └── copy_assets.sh
-└── android/
-    └── app/src/main/kotlin/com/example/ginsengidentifier/
-        ├── MainActivity.kt          ← Compose UI
-        ├── Classifier.kt            ← TFLite 推理封装
-        └── ui/theme/
+│   ├── ginseng_model.tflite          ← 端上模型（1208.7 KB）
+│   ├── ginseng_model.keras
+│   ├── metrics.json                  ← 训练指标 + 混淆矩阵
+│   └── eval_tflite.json              ← 逐张推理明细
+├── scripts/                          ← 同步并校验 assets
+└── android/app/src/main/kotlin/com/example/ginsengidentifier/
+    ├── MainActivity.kt               ← 导航 / 权限 / PiP
+    ├── Classifier.kt                 ← TFLite 推理封装
+    ├── model/ScanResult.kt           ← ScanResult + ScanStats
+    ├── data/ScanStore.kt             ← 连续天数 / 今日次数 / 开关
+    ├── scanner/
+    │   ├── ScannerService.kt         ← 前台服务：相机 + 持续推理 + 常驻通知
+    │   ├── OverlayService.kt         ← 悬浮窗
+    │   ├── StreamServer.kt           ← 内置 WebSocket 服务端
+    │   ├── ResultBus.kt              ← 结果总线（多消费者）
+    │   └── ModelHolder.kt            ← 进程内共享 Interpreter
+    ├── notify/
+    │   ├── Notifications.kt          ← 通知渠道 / 常驻通知 / 提醒
+    │   └── ReminderWorker.kt         ← 每日打卡提醒
+    ├── ui/
+    │   ├── Screens.kt                ← Home / Live / Result
+    │   ├── CameraPreview.kt          ← 取景器（只绑 Preview）
+    │   └── theme/                    ← 新配色 / 字阶 / 形状
+    └── widget/                       ← Glance 桌面小组件
 ```
 
 ---
 
-## 快速开始
+## 实时扫描是怎么跑的
 
-### 直接构建 APK
+```
+        ┌──────────────────────────────┐
+        │  ScannerService (前台服务)    │
+        │  CameraX ImageAnalysis       │  ~3 fps
+        │      ↓ RGBA → Bitmap         │
+        │  Classifier (TFLite, 224)    │
+        └──────────────┬───────────────┘
+                       │ ResultBus (StateFlow)
+     ┌─────────────────┼──────────────────┬───────────────┐
+     ▼                 ▼                  ▼               ▼
+ 常驻通知          悬浮窗            WebSocket        Compose UI / 小组件
+ (ongoing)       (OverlayService)     (:8765)         (StateFlow 订阅)
+```
+
+几个刻意的取舍：
+
+- **相机只有一个持有者**。Activity 只绑 `Preview`（取景器），分析永远在 Service 里。
+  两个 UseCase 绑在不同 LifecycleOwner 上是允许的，前提是**谁都不许调用 `unbindAll()`** ——
+  这行代码是 v1 里"退出再进来预览黑屏"的根因。
+- **两帧一致才认**。单帧结果抖动严重，连续两帧同标签（或置信度 ≥85%）才对外发布。
+- **节流**：分析 320ms/帧、广播 750ms、通知 900ms、统计计数 6s（同标签）、推送 25s。
+  不节流的话手机会烫得拿不住。
+- **计数不是每次推理都 +1**，否则对着药材站 10 秒就能刷满今日目标。
+
+---
+
+## 权限
+
+| 权限 | 用途 | 时机 |
+|---|---|---|
+| `CAMERA` | 实时扫描 / 拍照 | 点"开始实时扫描"时申请 |
+| `POST_NOTIFICATIONS` | 常驻通知、结果提醒 | 打开"订阅推送"时申请（Android 13+） |
+| `SYSTEM_ALERT_WINDOW` | 悬浮窗 | 打开"悬浮窗"时跳系统设置页 |
+| `FOREGROUND_SERVICE_CAMERA` | 后台持续扫码 | 安装即声明 |
+| `FOREGROUND_SERVICE_SPECIAL_USE` | 悬浮窗前台服务 | 安装即声明 |
+| `INTERNET` | WebSocket 串流 | 安装即声明 |
+
+拒绝任何一项都只是关闭对应功能，**不会闪退**（这是 v1 的主要问题）。
+
+---
+
+## WebSocket 串流
+
+在首页打开「实时串流」，然后同一局域网内任意设备：
+
+```js
+const ws = new WebSocket('ws://192.168.1.23:8765');   // 换成手机 IP
+ws.onmessage = e => console.log(JSON.parse(e.data));
+```
+
+```json
+{"type":"hello","app":"ginseng-identifier","version":2,"classes":["renshen","xiyangshen","jiegeng"]}
+{"label":"renshen","display":"人参","confidence":0.9321,
+ "runner_up":"xiyangshen","runner_up_confidence":0.0512,
+ "confident":true,"timestamp":1730000000000}
+```
+
+- 连上先收到一条 `hello`，之后每识别一次推一条
+- 发任意包含 `ping` 的文本会收到 `{"type":"pong"}`
+- 端口固定 `8765`，监听 `0.0.0.0`
+
+> 🔒 **没有鉴权**：同一 WiFi 下任何人都能连。这版是局域网演示用途，
+> 公网使用前必须加 token / TLS（`Java-WebSocket` 支持 `setWebSocketFactory` 走 wss）。
+
+---
+
+## 悬浮窗 / 画中画
+
+- **PiP**：实时扫描页右上角小窗按钮，或系统手势触发；小窗里显示大号结论 + 置信度条。
+- **悬浮窗**：实时扫描页点「悬浮窗」，授权后出现可拖动的结果卡片。
+  它**不自己开相机**（避免抢相机），只是 `ResultBus` 的订阅者，所以必须先开扫描。
+
+---
+
+## 推送
+
+当前实现（无需任何账号）：
+
+| 场景 | 实现 |
+|---|---|
+| 识别结果提醒 | `ScannerService` → `Notifications.notifyResult()`，25s 节流 |
+| 每日打卡提醒 | `ReminderWorker`，每天 20:00 检查，未完成目标才提醒 |
+| 常驻状态 | 前台服务通知，实时更新 |
+
+接 FCM（需要你自己建 Firebase 项目）：
+
+1. Firebase 控制台建项目 → 添加 Android 应用（包名 `com.example.ginsengidentifier`）
+2. 下载 `google-services.json` 放到 `android/app/`
+3. `build.gradle.kts` 加 `id("com.google.gms.google-services") version "4.4.2"`
+4. 依赖 `implementation("com.google.firebase:firebase-messaging-ktx:24.0.1")`
+5. 实现 `FirebaseMessagingService.onMessageReceived()` → 调 `Notifications.notifyResult()`
+
+服务端只负责把消息推给 FCM；识别仍然在端上，不需要上传照片。
+
+---
+
+## 桌面小组件
+
+Glance 实现，4×2 卡片：
+
+- 大字 **连续天数** + 🔥 今日 `n/10`
+- 今日目标进度条
+- 人参 / 西洋参 / 桔梗 三类累计计数
+- 点击整卡 → 直接打开扫描页
+
+数据源与 App 相同（`ScanStore`），每次识别后自动刷新。
+
+---
+
+## 构建与运行
 
 ```bash
 cd android
 ./gradlew assembleDebug          # Windows: gradlew.bat assembleDebug
-# 产物: android/app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-需要 JDK 17 + Android SDK 34（`local.properties` 里写 `sdk.dir`，该文件已被 git 忽略）。
+需要 JDK 17 + Android SDK 34（`local.properties` 里写 `sdk.dir`，已被 git 忽略）。
 
-### 从零重训
+### 真机验证
 
 ```bash
-pip install -r requirements.txt
-
-python training/fetch_dataset.py      # 抓图（约 10 分钟）
-python training/filter_clip.py        # CLIP 过滤噪声
-python training/clean_strict.py       # 去重
-python training/prepare_data.py       # 切分
-python training/train.py              # 训练 + 自动导出 tflite（CPU 约 5.5 分钟）
-python training/test_tflite.py        # 端到端验证
-python scripts/sync_assets.py         # 同步进 Android
+./gradlew connectedDebugAndroidTest
 ```
 
----
+| 测试 | 覆盖 |
+|---|---|
+| `SmokeTest` | 模型加载、张量契约、三类可达、抽样准确率、极端输入、Activity 启动 |
+| `FeatureTest` | 统计累加、常驻通知构建、WebSocket 启停、Service/组件声明、PiP 能力 |
 
-## 数据集
-
-详见 [`dataset/README.md`](dataset/README.md)。要点：
-
-- **来源可信**：iNaturalist 按物种 ID 取图（936 张），Wikimedia Commons 按条目搜索（239 张）
-- **清洗不是摆设**：CLIP 把"货架上的包装盒 / 人参鸡汤 / 街头招牌 / 古籍书页"这类
-  "提到了人参但不是药材图"剔掉；跨类近重复（解码后 pHash 距离 ≤6）直接丢弃
-- **规模**：clean 1086 张（455 / 175 / 456），train 759 / val 162 / test 165
-- **两类拍摄域**：整株叶片（≈650 张，主要来自 iNaturalist）与干燥根/切片（≈340 张）
-
-> 为什么必须分域统计：真机拍的是干燥药材，而 iNaturalist 给的是活体植物。
-> 只看总准确率会自我感觉良好。
+> 本机无连接设备，以上仅完成**编译验证**（`assembleDebugAndroidTest` 通过）。
 
 ---
 
-## 模型与指标
+## 数据集与模型
+
+数据来自 iNaturalist（研究级观察，按物种 ID）+ Wikimedia Commons，
+CLIP 半自动剔除"提到人参但不是药材图"的噪声，再做感知哈希去重。
+
+| 阶段 | 数量 |
+|---|---|
+| raw_dl（抓取） | 1175 |
+| curated（CLIP 过滤后） | 1184 |
+| clean（去重后） | 1086（455 / 175 / 456） |
+| train / val / test | 759 / 162 / 165 |
+
+详见 [`dataset/README.md`](dataset/README.md)。
+
+### 指标
 
 | 项 | 值 |
 |---|---|
-| Backbone | MobileNetV3Small (alpha=0.75, ImageNet) |
-| 输入 | 224×224×3 float32，RGB，值域 [0,255]（`preprocess_input` 已烧进图里） |
-| 输出 | 3 类 softmax |
+| Backbone | MobileNetV3Small (alpha=0.75) |
+| 输入 | 224×224×3 float32 RGB，值域 [0,255] |
 | TFLite | float16，**1208.7 KB** |
-| 训练 | 8 epoch warmup（冻结）+ 25 epoch fine-tune（解冻 40 层），CPU 270.4s |
+| val / test（Keras） | 0.8519 / 0.8485 |
+| test（TFLite，与 Kotlin 预处理逐像素一致） | **0.8545** |
 
-### test 集（165 张，与训练/验证无重叠）
-
-| 类别 | Precision | Recall | F1 | 样本 |
-|---|---:|---:|---:|---:|
-| 桔梗 jiegeng | 0.877 | 0.928 | 0.901 | 69 |
-| 人参 renshen | 0.882 | **0.556** | 0.682 | 27 |
-| 西洋参 xiyangshen | 0.827 | 0.899 | 0.861 | 69 |
+| 类别 | Precision | Recall | F1 |
+|---|---:|---:|---:|
+| 桔梗 | 0.877 | 0.928 | 0.901 |
+| 人参 | 0.882 | **0.556** | 0.682 |
+| 西洋参 | 0.827 | 0.899 | 0.861 |
 
 ```
 混淆矩阵（TFLite，行=真实，列=预测）
@@ -130,136 +238,41 @@ python scripts/sync_assets.py         # 同步进 Android
   xiyangshen          5         2          62
 ```
 
-**总体 85.5%**（TFLite，预处理与 Kotlin 逐像素一致）。
-
-### ⚠️ 按数据来源拆分 —— 这一张表最重要
-
-同一个 test 集，按图片来源拆开后差距极大：
+### ⚠️ 按数据来源拆分
 
 | 来源 | 准确率 |
 |---|---|
-| iNaturalist + Wikimedia（新数据） | **0.890**（137/154） |
-| 旧版 Bing 商品图（`dataset/raw/`） | **0.364**（4/11） |
+| iNaturalist + Wikimedia | **0.890**（137/154） |
+| 旧版 Bing 商品图 | **0.364**（4/11） |
 
-也就是说：模型在"植物学照片"上很准，但一换到**电商白底商品图**就明显掉，
-说明它学到的不只是药材形态，还包括背景/拍摄风格等域特征。
-样本只有 11 张，置信区间很宽，但方向是明确的 —— **这个模型不能当成
-"拍什么都能认"，它只在自己见过的拍摄域里可靠。**
+模型在植物学照片上很准，换到电商白底商品图就明显掉 —— 说明它学到的不只是形态，
+还包括背景/拍摄风格。样本只有 11 张，但方向明确：**这不是"拍什么都能认"的模型**。
 
-### 按拍摄域拆分
+### 按拍摄域
 
 | 域 | 准确率 |
 |---|---|
 | 整株 / 叶片 | 0.876（78/89） |
 | 干燥根 / 切片 | 0.829（63/76） |
 
-### 置信度
-
-预测正确时平均置信度 0.917，预测错误时 0.679 —— **错的那批也很自信**，
-所以 App 端低于 55% 只给提示、不给"这肯定不是三类之一"的承诺。
-
 ---
 
-## 关于"点开就闪退"
+## 已知限制
 
-代码里逐条修掉的原因（都是真机上必然复现的）：
+1. **商品图域泛化差**（36%，n=11）—— 当前最大短板。
+2. **人参 recall 只有 56%** —— 可用图只有 175 张，且切片与西洋参极像。
+3. **没有"未知"类** —— 一定会选三类之一，只能靠 <55% 提示。
+4. **WebSocket 无鉴权** —— 局域网演示用。
+5. **推送依赖系统通知** —— 没有 FCM 就没有真正的跨设备/离线推送。
+6. **持续扫描耗电** —— 3 fps + 前台服务，长时间开会烫；建议按需开启。
 
-1. **`<queries>` 缺失（Android 11+）**
-   `MediaStore.ACTION_IMAGE_CAPTURE` 受包可见性限制。没有声明时
-   `launcher.launch()` 直接抛 `ActivityNotFoundException`，没 try/catch 就是闪退。
-   → `AndroidManifest.xml` 补 `<queries>`，`MainActivity` 侧再兜一层异常。
+### 下一步
 
-2. **全尺寸解码 OOM**
-   相机原图 4000×3000，`BitmapFactory.decodeStream` 一次吃掉 ~48 MB。
-   低端机直接 `OutOfMemoryError`（不是 Exception，抓不到）。
-   → `decodeSampled()` 先读 bounds 再按 `inSampleSize` 降到 1600px 以内，
-   并且 `catch (Throwable)`。
-
-3. **主线程做重活**
-   解码 + 旋转 + 推理全在 UI 线程，轻则掉帧重则 ANR。
-   → `withContext(Dispatchers.IO)`，主线程只渲染。
-
-4. **输出数组按 `labels.size` 硬编码**
-   模型一换、类别数一变就是 `ArrayIndexOutOfBoundsException`。
-   → `Classifier.load()` 校验输入 shape / dtype / 输出维度，不一致就返回
-   明确中文错误，且 `load()` 捕获 `Throwable`（`UnsatisfiedLinkError` 也能兜住）。
-
-5. **相机 Uri 在配置变更后丢失**
-   旋转屏幕/切深色模式后 Activity 重建，`cameraUri` 变 null，回调拿不到图。
-   → `rememberSaveable` 存 Uri 字符串。
-
-6. **FileProvider 指向不存在的文件**
-   某些相机 App 拿到不存在的 Uri 会失败。
-   → `createNewFile()` 后再 `getUriForFile`，并顺手清理 24h 前的缓存。
-
-7. **推理后 `recycle()` 时序**
-   回收中间 Bitmap 时若与 Compose 绘制同帧，会 `Canvas: trying to use a recycled bitmap`。
-   → 只回收自己创建的中间图，界面正在用的那张不碰。
-
-另外删掉了用不上的 `READ_MEDIA_IMAGES` / `READ_EXTERNAL_STORAGE`：
-相册走 Photo Picker，本来就不需要存储权限。
-
----
-
-## 验证
-
-### 能自动化跑的部分
-
-```bash
-cd android
-
-./gradlew lintDebug            # 0 error（37 个 warning 全是"依赖有新版本"）
-./gradlew assembleDebug        # APK 35.2 MB
-./gradlew assembleDebugAndroidTest
-```
-
-已核对：
-
-- `aapt2 dump xmltree` → 只申请 `CAMERA`，`<queries>` 含 `IMAGE_CAPTURE`，FileProvider authority 正确
-- APK 内 `assets/ginseng_model.tflite` 的 sha256 与 `model/ginseng_model.tflite` **完全一致**
-- `training/test_tflite.py` 复刻 Kotlin 的预处理（中心裁剪 + 双线性 + [0,255] RGB），
-  在 165 张 test 图上跑出 85.5%，说明"电脑上准、手机上乱猜"的预处理错位已消除
-
-### 真机冒烟测试（需要插上手机 / 开模拟器）
-
-```bash
-cd android
-./gradlew connectedDebugAndroidTest
-```
-
-`androidTest/.../SmokeTest.kt` 覆盖：
-
-| # | 用例 | 验证的功能 |
-|---|---|---|
-| 1 | `modelLoads` | 模型 + labels 能加载 |
-| 2 | `predictionsAreWellFormed` | 输出 3 类、降序、softmax 归一化、中文名映射 |
-| 3 | `allThreeClassesAreReachable` | 三张代表图至少预测出 2 个不同类别（没退化成常数） |
-| 4 | `sampleAccuracyIsReasonable` | 6 张抽样图至少对 4 张 |
-| 5 | `handlesDegenerateInputs` | 纯白图 / 1×1 / 800×200 非正方形 / 全透明，都不崩 |
-| 6 | `activityLaunchesWithoutCrashing` | Activity 能起来且不立即结束 |
-
-> 本机没有连接设备，所以第 1–6 项目前只完成**编译验证**（`assembleDebugAndroidTest` 通过）。
-> 连上手机后跑一条命令即可得到真机结果。
----
-
-## 已知限制（别被 85% 骗了）
-
-1. **商品图域泛化很差**：新来源 89%，旧 Bing 商品图只有 36%（n=11）。
-   这是当前最大的问题 —— 模型对"拍摄风格/背景"过拟合。
-   想真正用于电商图或白底拍摄，必须补对应域的样本再训。
-2. **人参 recall 只有 56%**：人参只有 175 张可用图（*Panax ginseng* 野生记录本来就少），
-   且干燥切片与西洋参极易混淆。模型倾向于漏判人参，而不是误报。
-3. **干燥切片是硬任务**：三者切片在 RGB 上差异极小，专业鉴别依赖显微结构、气味、皂苷含量。
-4. **没有"未知"类**：模型一定在三类里选一个，只能靠 <55% 提示，不能真正拒识。
-5. **训练集含旧版 195 张来源不明的 Bing 图**（`dataset/raw/`），若对外分发需先剔除。
-
-### 下一步优先级
-
-1. **补商品图/白底图**（每类 200+），并单独统计该域准确率 —— 目前最大短板
-2. 补人参数据（目标 400+，重点补干燥整根与切片）
-3. 增加 `other / 未知` 负类，做真正的开集拒识
-4. 试 256 或 288 输入分辨率（`Classifier` 已经从张量读输入尺寸，不用改代码）
-5. 二阶段：先分「整株 / 干燥根」，再分物种
+1. 补商品图/白底图（每类 200+），单独统计该域准确率
+2. 补人参数据（目标 400+）
+3. 增加 `other / 未知` 负类，做开集拒识
+4. WebSocket 加 token + wss
+5. 接 FCM，把"订阅推送"做成真推送
 
 ---
 
