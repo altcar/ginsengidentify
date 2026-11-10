@@ -1,6 +1,7 @@
 # 参三味识别 (Ginseng Identifier)
 
-> 端侧三分类 Android 应用：**人参 / 西洋参 / 桔梗**。
+> 端侧识别 Android 应用：**人参 / 西洋参 / 桔梗**，外加一个 `other` 类专门回答
+> **"未检测到相关药材"**（不给错误答案比给错答案重要）。
 > Kotlin + Jetpack Compose + TensorFlow Lite，离线推理，模型 1.2 MB。
 
 ![arch](https://img.shields.io/badge/Android-24%2B-green) ![kotlin](https://img.shields.io/badge/Kotlin-2.0-purple) ![tflite](https://img.shields.io/badge/TFLite-2.14-orange) ![license](https://img.shields.io/badge/license-MIT-blue)
