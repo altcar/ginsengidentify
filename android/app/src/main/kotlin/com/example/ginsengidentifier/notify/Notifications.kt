@@ -18,10 +18,11 @@ import com.example.ginsengidentifier.model.ScanStats
 import com.example.ginsengidentifier.scanner.ScannerService
 
 /**
- * 通知中心：常驻通知（扫描中）+ 结果提醒 + 断签提醒。
+ * Notification centre: the sticky "scanning" notification, result alerts,
+ * streak reminders and the shared remote-push entry point.
  *
- * 常驻通知是"永远挂着"的那条：低优先级、静音、不可滑动清除，
- * 内容随识别结果实时更新。
+ * All user-facing copy is English so it renders identically on every device
+ * regardless of the installed CJK fonts.
  */
 object Notifications {
 
@@ -39,10 +40,10 @@ object Notifications {
 
         val live = NotificationChannel(
             CHANNEL_LIVE,
-            "实时扫描",
+            "Live scanning",
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "扫描时常驻显示当前识别结果"
+            description = "Always-on notification showing the current detection"
             setShowBadge(false)
             enableVibration(false)
             setSound(null, null)
@@ -51,10 +52,10 @@ object Notifications {
 
         val alerts = NotificationChannel(
             CHANNEL_ALERTS,
-            "识别提醒 / 连续打卡",
+            "Alerts & streaks",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "识别完成提醒、连续打卡提醒"
+            description = "Detection alerts, daily streak reminders and remote push"
             setShowBadge(true)
         }
 
@@ -71,7 +72,6 @@ object Notifications {
     private fun openApp(context: Context): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_OPEN_SCANNER, true)
         }
         return PendingIntent.getActivity(
             context, 0, intent,
@@ -79,7 +79,7 @@ object Notifications {
         )
     }
 
-    /** 常驻通知：扫描中一直挂着，实时刷新结果。 */
+    /** Sticky notification: always visible while scanning, updates live. */
     fun liveNotification(
         context: Context,
         result: ScanResult?,
@@ -88,17 +88,17 @@ object Notifications {
         streamClients: Int,
     ): Notification {
         val title = when {
-            !scanning -> "扫描已暂停"
-            result == null -> "正在识别…把药材对准取景框"
-            result.isOther -> "未检测到相关药材"
+            !scanning -> "Scanning paused"
+            result == null -> "Scanning… point at the herb"
+            result.isOther -> "No herb detected"
             result.isConfident -> "${result.displayName} · ${result.confidencePercent}"
-            else -> "不太确定（${result.displayName} ${result.confidencePercent}）"
+            else -> "Not sure (${result.displayName} ${result.confidencePercent})"
         }
 
         val bits = buildList {
-            add("连续 ${stats.streak} 天")
-            add("今日 ${stats.todayCount}/${stats.dailyGoal}")
-            if (streamClients > 0) add("$streamClients 个订阅者")
+            add("Streak ${stats.streak}d")
+            add("Today ${stats.todayCount}/${stats.dailyGoal}")
+            if (streamClients > 0) add("$streamClients subscriber(s)")
         }
 
         val stopIntent = PendingIntent.getService(
@@ -111,7 +111,7 @@ object Notifications {
             .setSmallIcon(R.drawable.ic_stat_ginseng)
             .setContentTitle(title)
             .setContentText(bits.joinToString(" · "))
-            .setSubText("参三味识别 · 实时")
+            .setSubText("Herb ID · live")
             .setContentIntent(openApp(context))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -120,22 +120,21 @@ object Notifications {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(R.drawable.ic_stat_stop, "停止扫描", stopIntent)
+            .addAction(R.drawable.ic_stat_stop, "Stop", stopIntent)
             .build()
     }
 
-    /** 订阅推送：识别结果提醒 / 打卡提醒。 */
     fun notifyResult(context: Context, result: ScanResult, stats: ScanStats) {
         if (!canPost(context)) return
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val text = if (result.isConfident) {
-            "置信度 ${result.confidencePercent} · 今日 ${stats.todayCount}/${stats.dailyGoal}"
+            "Confidence ${result.confidencePercent} · today ${stats.todayCount}/${stats.dailyGoal}"
         } else {
-            "置信度偏低，可能不属于这三类"
+            "Low confidence — this may not be one of the three herbs"
         }
         val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_ginseng)
-            .setContentTitle("识别到 ${result.displayName}")
+            .setContentTitle("Detected ${result.displayName}")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openApp(context))
@@ -149,13 +148,13 @@ object Notifications {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val (title, text) = when {
             stats.todayCount == 0 && stats.streak > 0 ->
-                "别断了连续 ${stats.streak} 天" to "今天还没扫过，花 10 秒保持一下？"
-            stats.todayCount == 0 -> "今天还没开始" to "拍一张，开始你的识别连续记录"
+                "Don't break your ${stats.streak}-day streak" to "No scans today yet — takes 10 seconds"
+            stats.todayCount == 0 ->
+                "Start your streak" to "Scan one herb to begin"
             stats.todayCount >= stats.dailyGoal ->
-                "今日目标已完成 🎉" to "连续 ${stats.streak} 天 · ${stats.todayCount}/${stats.dailyGoal}"
+                "Daily goal complete" to "Streak ${stats.streak}d · ${stats.todayCount}/${stats.dailyGoal}"
             else ->
-                "还差 ${stats.dailyGoal - stats.todayCount} 张就到今天的目标" to
-                    "连续 ${stats.streak} 天"
+                "${stats.dailyGoal - stats.todayCount} to go today" to "Streak ${stats.streak}d"
         }
         val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_ginseng)
@@ -167,22 +166,21 @@ object Notifications {
         nm.notify(ID_STREAK, n)
     }
 
-    fun cancel(context: Context, id: Int) {
-        context.getSystemService(NotificationManager::class.java)?.cancel(id)
-    }
-
-    /** 远程推送（ntfy / FCM）统一入口。 */
     fun notifyPush(context: Context, title: String, body: String) {
         if (!canPost(context)) return
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_ginseng)
-            .setContentTitle(title.ifBlank { "参三味识别" })
+            .setContentTitle(title.ifBlank { "Herb ID" })
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(openApp(context))
             .setAutoCancel(true)
             .build()
         nm.notify(ID_PUSH, n)
+    }
+
+    fun cancel(context: Context, id: Int) {
+        context.getSystemService(NotificationManager::class.java)?.cancel(id)
     }
 }

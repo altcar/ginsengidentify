@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- 常驻扫描（前台服务）+ 悬浮窗 -->
+    <!-- Always-on scanning (foreground service) + floating bubble -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
@@ -16,24 +16,10 @@
 
     <uses-feature
         android:name="android.hardware.camera"
-        android:required="false" />
+        android:required="true" />
     <uses-feature
         android:name="android.hardware.camera.autofocus"
         android:required="false" />
-
-    <!--
-      Android 11 (API 30) 起有包可见性限制：
-      不声明 <queries>，起相机时会抛 ActivityNotFoundException，表现为"点拍照就闪退"。
-    -->
-    <queries>
-        <intent>
-            <action android:name="android.media.action.IMAGE_CAPTURE" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.GET_CONTENT" />
-            <data android:mimeType="image/*" />
-        </intent>
-    </queries>
 
     <application
         android:name=".GinsengApp"
@@ -52,6 +38,7 @@
             android:exported="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden|uiMode"
             android:launchMode="singleTask"
+            android:screenOrientation="portrait"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.GinsengIdentifier">
 
@@ -61,23 +48,23 @@
             </intent-filter>
         </activity>
 
-        <!-- 实时扫描：前台服务持相机，结果推给通知 / 悬浮窗 / WebSocket / 小组件 -->
+        <!-- Realtime scanning: the camera foreground service -->
         <service
             android:name=".scanner.ScannerService"
             android:exported="false"
             android:foregroundServiceType="camera" />
 
-        <!-- 悬浮窗（YouTube 式小窗） -->
+        <!-- Floating bubble over other apps -->
         <service
             android:name=".scanner.OverlayService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Floating ginseng scan result bubble" />
+                android:value="Floating detection result bubble" />
         </service>
 
-        <!-- Duolingo 风格桌面小组件 -->
+        <!-- Home screen widget -->
         <receiver
             android:name=".widget.GinsengWidgetReceiver"
             android:exported="true">
@@ -89,7 +76,7 @@
                 android:resource="@xml/ginseng_widget_info" />
         </receiver>
 
-        <!-- FCM（保留）：没有配置 Firebase 凭据时不会初始化，也不会收到消息 -->
+        <!-- FCM (inert until credentials are provided) -->
         <service
             android:name=".notify.GinsengMessagingService"
             android:exported="false">
@@ -97,15 +84,5 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
     </application>
 </manifest>

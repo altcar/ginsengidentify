@@ -40,9 +40,9 @@ object FrameGate {
         val std = sqrt((sumSq / n - mean * mean).coerceAtLeast(0.0))
 
         return when {
-            mean < 24.0 -> "画面太暗，换个光线好的地方"
-            mean > 246.0 -> "画面过曝，避开展示灯或闪光灯"
-            std < 7.0 -> "没有检测到物体，把药材放进画面"
+            mean < 24.0 -> "Too dark — move to better light"
+            mean > 246.0 -> "Overexposed — avoid direct light"
+            std < 7.0 -> "Nothing in frame — point at the herb"
             else -> null
         }
     }

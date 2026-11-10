@@ -36,6 +36,21 @@ object StreamServer {
 
     val isRunning: Boolean get() = server != null
 
+    /** ws://<lan-ip>:8765 for display in settings. */
+    fun localUrl(): String = "ws://${localIp() ?: "phone-ip"}:$PORT"
+
+    private fun localIp(): String? = try {
+        java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .asSequence()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList().asSequence() }
+            .filterIsInstance<java.net.Inet4Address>()
+            .firstOrNull { it.isSiteLocalAddress }
+            ?.hostAddress
+    } catch (t: Throwable) {
+        null
+    }
+
     fun clientCount(): Int = try {
         server?.connections?.size ?: 0
     } catch (t: Throwable) {

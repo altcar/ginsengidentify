@@ -78,11 +78,11 @@ private fun WidgetContent(stats: ScanStats) {
             Spacer(GlanceModifier.width(6.dp))
             Column {
                 Text(
-                    text = "天连续",
+                    text = "day streak",
                     style = TextStyle(fontSize = 13.sp, color = ColorProvider(muted)),
                 )
                 Text(
-                    text = "🔥 今日 ${stats.todayCount}/${stats.dailyGoal}",
+                    text = "Today ${stats.todayCount}/${stats.dailyGoal}",
                     style = TextStyle(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -102,11 +102,11 @@ private fun WidgetContent(stats: ScanStats) {
 
         Spacer(GlanceModifier.height(12.dp))
         Row(modifier = GlanceModifier.fillMaxWidth()) {
-            StatChip("人参", stats.countOf("renshen"), Color(0xFFD4575F))
+            StatChip("Ginseng", stats.countOf("renshen"), Color(0xFFD4575F))
             Spacer(GlanceModifier.width(8.dp))
-            StatChip("西洋参", stats.countOf("xiyangshen"), Color(0xFF2E8B6E))
+            StatChip("American", stats.countOf("xiyangshen"), Color(0xFF2E8B6E))
             Spacer(GlanceModifier.width(8.dp))
-            StatChip("桔梗", stats.countOf("jiegeng"), Color(0xFF7C6BD6))
+            StatChip("Platycodon", stats.countOf("jiegeng"), Color(0xFF7C6BD6))
         }
     }
 }

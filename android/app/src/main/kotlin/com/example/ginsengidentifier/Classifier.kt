@@ -42,17 +42,17 @@ class Classifier(
         private set
 
     private val displayNames = mapOf(
-        "jiegeng" to "桔梗",
-        "renshen" to "人参",
-        "xiyangshen" to "西洋参",
-        "other" to "未检测到相关药材",
+        "jiegeng" to "Platycodon",
+        "renshen" to "Ginseng",
+        "xiyangshen" to "American Ginseng",
+        "other" to "No herb detected",
     )
 
     private val displayInfo = mapOf(
-        "renshen" to "Panax ginseng · 五加科人参属 · 药性: 微苦、微甘，温",
-        "xiyangshen" to "Panax quinquefolius · 五加科人参属 · 药性: 苦、微甘，凉",
-        "jiegeng" to "Platycodon grandiflorus · 桔梗科桔梗属 · 药性: 苦、辛，平",
-        "other" to "把药材放在纯色背景上，占据画面一半以上",
+        "renshen" to "Panax ginseng · Araliaceae · warm, slightly bitter",
+        "xiyangshen" to "Panax quinquefolius · Araliaceae · cooling, bittersweet",
+        "jiegeng" to "Platycodon grandiflorus · Campanulaceae · neutral, pungent",
+        "other" to "Fill the frame with the herb against a plain background",
     )
 
     /** 加载模型。返回 true 表示可以推理。 */

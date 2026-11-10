@@ -1,14 +1,33 @@
-# 参三味识别 (Ginseng Identifier)
+# Herb ID (参三味识别)
 
-> 端侧识别 Android 应用：**人参 / 西洋参 / 桔梗**，外加一个 `other` 类专门回答
-> **"未检测到相关药材"**（不给错误答案比给错答案重要）。
-> Kotlin + Jetpack Compose + TensorFlow Lite，离线推理，模型 1.2 MB。
+> 端侧**实时**识别 Android 应用：人参 / 西洋参 / 桔梗，外加 `other` 类专门回答
+> **"No herb detected"**（给不出答案比给错答案好）。
+>
+> - **打开即扫描**：没有首页、没有拍照、没有相册，进 App 就是取景器
+> - **所有开关都在 Settings**（右上角齿轮）
+> - **UI 全英文**：中文在部分设备/构建上会被渲染成乱码，英文最稳
+> - Kotlin + Jetpack Compose + TensorFlow Lite，离线推理，模型 1.2 MB
 
 ![arch](https://img.shields.io/badge/Android-24%2B-green) ![kotlin](https://img.shields.io/badge/Kotlin-2.0-purple) ![tflite](https://img.shields.io/badge/TFLite-2.14-orange) ![license](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
-## v2.1 修复（本轮）
+## v2.2 改动（本轮）
+
+| 需求 | 处理 |
+|---|---|
+| **打开就是实时扫描** | `MainActivity` 直接渲染 `LiveScreen`；拿到相机权限后立刻 `startForegroundService`，没有中间页 |
+| **不要单张 / 相册** | 删掉 `TakePicture` / `PickVisualMedia`、`ResultScreen`、`FileProvider`、`<queries>`，Manifest 只留相机相关 |
+| **所有选项收进 Settings** | 右上角齿轮：通知订阅、远程推送（ntfy + FCM）、WebSocket 串流、悬浮窗、每日目标、统计、关于 |
+| **全英文 UI** | 所有界面文案、通知、小组件改为英文；中文只留在 README。这样无论设备字体/编码如何都不会再出乱码 |
+| **Logo 换成真实照片** | 取自 Wikimedia Commons `Insam (ginseng).jpg`（CC BY-SA 2.0 kr）：按彩度抠图去背 → 放到玉色渐变底板上 → 导出 48/72/96/144/192 px、圆形、自适应前景、主题单色图标 |
+
+> 图标署名：**"Insam (ginseng).jpg" by Paxsimius, Wikimedia Commons, CC BY-SA 2.0 kr**，
+> 经过去背、裁切与底色合成。图标本身沿用 CC BY-SA 2.0；其余代码仍为 MIT。
+
+---
+
+## v2.1 修复
 
 | 问题 | 原因 | 处理 |
 |---|---|---|
@@ -19,8 +38,9 @@
 | **扫码框** | UI 画了一个 QR 式方框 | 已去掉；识别结果用整屏卡片呈现 |
 | **推送要花钱/要账号** | 只有本地通知 | 新增 ntfy.sh 免费通道（无账号、无 Firebase）+ 保留 FCM（凭据用 Gradle 属性注入，不提交密钥） |
 
-> 编码这件事我复核过：仓库里**所有** `.kt/.py/.md/.xml/.json` 现在都不含双重编码，
-> 并且 APK 里的 `app_name` 用 `aapt2 dump badging` 验证过是「参三味识别」。
+> 编码这件事我复核过：仓库里**所有** `.kt/.py/.md/.xml/.json` 都不含双重编码，
+> dex 里也搜不到 mojibake 字节。v2.2 起界面全部改成英文，`app_name` 是 `Herb ID`
+> （`aapt2 dump badging` 已核对），从根上避免字体/编码导致的乱码。
 
 ---
 
@@ -78,9 +98,9 @@ ginsengidentify/
     │   ├── FirebasePush.kt           ← FCM（Gradle 属性注入凭据）
     │   └── GinsengMessagingService.kt← FCM 消息 → 通知
     ├── ui/
-    │   ├── Screens.kt                ← Home / Live / Result
-    │   ├── CameraPreview.kt          ← 取景器（只绑 Preview）
-    │   └── theme/                    ← 新配色 / 字阶 / 形状
+    │   ├── Screens.kt                ← LiveScreen（唯一主界面）+ SettingsScreen
+    │   ├── CameraPreview.kt          ← 取景器（Preview + Analysis 一次绑定）
+    │   └── theme/                    ← 配色 / 字阶 / 形状
     └── widget/                       ← Glance 桌面小组件
 ```
 
@@ -118,7 +138,7 @@ ginsengidentify/
 
 | 权限 | 用途 | 时机 |
 |---|---|---|
-| `CAMERA` | 实时扫描 / 拍照 | 点"开始实时扫描"时申请 |
+| `CAMERA` | 实时扫描 | 启动时申请（拒绝则无法使用） |
 | `POST_NOTIFICATIONS` | 常驻通知、结果提醒 | 打开"订阅推送"时申请（Android 13+） |
 | `SYSTEM_ALERT_WINDOW` | 悬浮窗 | 打开"悬浮窗"时跳系统设置页 |
 | `FOREGROUND_SERVICE_CAMERA` | 后台持续扫码 | 安装即声明 |

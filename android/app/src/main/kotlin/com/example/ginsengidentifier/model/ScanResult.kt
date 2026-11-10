@@ -35,7 +35,7 @@ data class ScanResult(
     companion object {
         const val CONFIDENCE_FLOOR = 0.55f
         const val LABEL_OTHER = "other"
-        const val NO_DETECTION = "未检测到相关药材"
+        const val NO_DETECTION = "No herb detected"
 
         fun none(reason: String): ScanResult =
             ScanResult(LABEL_OTHER, NO_DETECTION, 0f, note = reason)
