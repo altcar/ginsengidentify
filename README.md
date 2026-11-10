@@ -12,6 +12,22 @@
 
 ---
 
+## Download
+
+[![latest release](https://img.shields.io/github/v/release/altcar/ginsengidentify)](https://github.com/altcar/ginsengidentify/releases/latest)
+
+**[herb-id-2.2.apk](https://github.com/altcar/ginsengidentify/releases/download/v2.2/herb-id-2.2.apk)** · 31.6 MB · Android 7.0+ (API 24)
+
+```bash
+adb install herb-id-2.2.apk
+```
+
+> 该 APK 用 Android 标准 **debug 证书**签名：可以直接侧载测试，但**不是**上架签名，
+> 且换签名后无法覆盖安装（先卸载）。用自己的 key 构建：
+> `./gradlew assembleRelease -PRELEASE_STORE_FILE=... -PRELEASE_STORE_PASSWORD=... -PRELEASE_KEY_ALIAS=... -PRELEASE_KEY_PASSWORD=...`
+
+---
+
 ## v2.2 改动（本轮）
 
 | 需求 | 处理 |

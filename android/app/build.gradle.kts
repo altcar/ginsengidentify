@@ -8,14 +8,27 @@ android {
     namespace = "com.example.ginsengidentifier"
     compileSdk = 34
 
+    signingConfigs {
+        // Only created when a real keystore is supplied via -P properties.
+        val storePath = (project.findProperty("RELEASE_STORE_FILE") as String?)
+        if (storePath != null) {
+            create("releaseKey") {
+                storeFile = rootProject.file(storePath)
+                storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String?
+                keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String?
+                keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String?
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.ginsengidentifier"
         minSdk = 24
         targetSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "2.2"
 
         // FCM 凭据通过 Gradle 属性注入，避免把 google-services.json 塞进仓库：
         //   gradle.properties:
@@ -32,6 +45,17 @@ android {
 
     buildTypes {
         release {
+            // Demo signing: falls back to the standard debug keystore so a
+            // release APK can be produced without committing any secret.
+            // Provide a real key with:
+            //   -PRELEASE_STORE_FILE=... -PRELEASE_STORE_PASSWORD=...
+            //   -PRELEASE_KEY_ALIAS=...   -PRELEASE_KEY_PASSWORD=...
+            val storePath = (project.findProperty("RELEASE_STORE_FILE") as String?)
+            signingConfig = if (storePath != null) {
+                signingConfigs.getByName("releaseKey")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
