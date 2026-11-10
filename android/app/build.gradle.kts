@@ -16,6 +16,18 @@ android {
         vectorDrawables { useSupportLibrary = true }
         versionCode = 2
         versionName = "2.0"
+
+        // FCM 凭据通过 Gradle 属性注入，避免把 google-services.json 塞进仓库：
+        //   gradle.properties:
+        //     FCM_PROJECT_ID=xxx
+        //     FCM_APP_ID=1:123:android:abc
+        //     FCM_API_KEY=AIza...
+        //     FCM_SENDER_ID=123
+        fun prop(name: String): String = (project.findProperty(name) as String?) ?: ""
+        buildConfigField("String", "FCM_PROJECT_ID", "\"${prop("FCM_PROJECT_ID")}\"")
+        buildConfigField("String", "FCM_APP_ID", "\"${prop("FCM_APP_ID")}\"")
+        buildConfigField("String", "FCM_API_KEY", "\"${prop("FCM_API_KEY")}\"")
+        buildConfigField("String", "FCM_SENDER_ID", "\"${prop("FCM_SENDER_ID")}\"")
     }
 
     buildTypes {
@@ -42,6 +54,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -77,6 +90,9 @@ dependencies {
     // 常驻扫描 / 悬浮窗 / 实时流
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.java.websocket)
+
+    // FCM：没有 google-services.json 也能编译；凭据通过 Gradle 属性注入
+    implementation(libs.firebase.messaging)
 
     // Duolingo 风格桌面小组件
     implementation(libs.androidx.glance.appwidget)

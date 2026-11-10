@@ -31,6 +31,7 @@ object Notifications {
     const val ID_LIVE = 1001
     const val ID_RESULT = 1002
     const val ID_STREAK = 1003
+    const val ID_PUSH = 1005
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -89,6 +90,7 @@ object Notifications {
         val title = when {
             !scanning -> "扫描已暂停"
             result == null -> "正在识别…把药材对准取景框"
+            result.isOther -> "未检测到相关药材"
             result.isConfident -> "${result.displayName} · ${result.confidencePercent}"
             else -> "不太确定（${result.displayName} ${result.confidencePercent}）"
         }
@@ -167,5 +169,20 @@ object Notifications {
 
     fun cancel(context: Context, id: Int) {
         context.getSystemService(NotificationManager::class.java)?.cancel(id)
+    }
+
+    /** 远程推送（ntfy / FCM）统一入口。 */
+    fun notifyPush(context: Context, title: String, body: String) {
+        if (!canPost(context)) return
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
+        val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_stat_ginseng)
+            .setContentTitle(title.ifBlank { "参三味识别" })
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(openApp(context))
+            .setAutoCancel(true)
+            .build()
+        nm.notify(ID_PUSH, n)
     }
 }

@@ -6,24 +6,29 @@
 ## 流水线
 
 ```
-fetch_dataset.py   ->  dataset/raw_dl/     从 iNaturalist + Wikimedia Commons 按物种/条目抓图
-filter_clip.py     ->  dataset/curated/    用 CLIP 剔除"提到人参但不是药材图"的噪声
-clean_strict.py    ->  dataset/clean/      解码校验 + dHash 去重（含跨类冲突）
-prepare_data.py    ->  dataset/processed/  分层切分 70/15/15
+fetch_dataset.py        ->  dataset/raw_dl/     从 iNaturalist + Wikimedia Commons 按物种/条目抓图
+filter_clip.py          ->  dataset/curated/    用 CLIP 剔除"提到人参但不是药材图"的噪声（并标 plant/root 域）
+clean_strict.py         ->  dataset/clean/      解码校验 + dHash 去重（含跨类冲突）
+build_negative_class.py ->  dataset/clean/other 负类：quarantine 噪声 + 纯色/噪声/黑屏/过曝合成图
+prepare_data.py         ->  dataset/processed/  分层切分 70/15/15
 ```
 
 每一步都可复现，`dataset/raw_dl/manifest.csv` 记录每张图的来源、许可、作者、原始链接。
 
 ## 规模
 
-| 阶段 | jiegeng 桔梗 | renshen 人参 | xiyangshen 西洋参 | 合计 |
-|---|---:|---:|---:|---:|
-| raw_dl（抓取） | 429 | 315 | 431 | 1175 |
-| curated（CLIP 过滤后） | 461 | 263 | 460 | 1184 |
-| clean（去重后） | 455 | 175 | 456 | 1086 |
-| processed / train | 318 | 122 | 319 | 759 |
-| processed / val | 68 | 26 | 68 | 162 |
-| processed / test | 69 | 27 | 69 | 165 |
+| 阶段 | jiegeng 桔梗 | renshen 人参 | xiyangshen 西洋参 | other 未检测到 | 合计 |
+|---|---:|---:|---:|---:|---:|
+| raw_dl（抓取） | 429 | 315 | 431 | — | 1175 |
+| curated（CLIP 过滤后） | 461 | 263 | 460 | — | 1184 |
+| clean（去重后） | 455 | 175 | 456 | 334 | 1420 |
+| processed / train | 318 | 122 | 319 | 233 | 992 |
+| processed / val | 68 | 26 | 68 | 50 | 212 |
+| processed / test | 69 | 27 | 69 | 51 | 216 |
+
+`other` 来自两处：`dataset/quarantine/`（CLIP 判为货架/食物/招牌/文档的噪声图 184 张）
+和合成图 150 张（纯色、渐变、噪声、极暗、过曝、棋盘格）。
+它的作用是给模型一个"什么都不是"的出口 —— 没有它，softmax 会把任意画面硬塞进三类之一。
 
 > curated 里包含 `dataset/raw/` 的 195 张旧图（去重后并入），所以列和 raw_dl 不完全对应。
 

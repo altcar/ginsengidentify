@@ -39,10 +39,11 @@ class GinsengWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         ScanStore.init(context)
+        // 在 composition 之外取快照（lint: StateFlowValueCalledInComposition）
+        val stats = ScanStore.stats.value
         provideContent {
-            // 直接读快照：Glance 的 recomposition 不依赖 Flow，
-            // 数据变化时由 WidgetUpdater.updateAll() 触发重建，最稳。
-            WidgetContent(ScanStore.stats.value)
+            // 数据变化时由 WidgetUpdater.updateAll() 重新触发 provideGlance
+            WidgetContent(stats)
         }
     }
 }

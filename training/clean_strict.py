@@ -1,17 +1,17 @@
 ﻿"""
-clean_strict.py â€” æŠŠ dataset/raw + dataset/raw_dl æ¸…æ´—æˆä¸€ä»½å¯ä¿¡çš„ dataset/clean
+clean_strict.py — 把 dataset/raw + dataset/raw_dl 清洗成一份可信的 dataset/clean
 
-è§„åˆ™:
-  1. åªæŽ¥å—èƒ½å®Œæ•´è§£ç çš„å›¾ç‰‡ï¼Œç»Ÿä¸€è½¬ RGBã€æŒ‰ EXIF æ‘†æ­£
-  2. çŸ­è¾¹ < 400px ä¸¢å¼ƒï¼ˆæ¨¡åž‹è¾“å…¥ 224ï¼Œå¤ªå°çš„å›¾æ”¾å¤§åŽå…¨æ˜¯å™ªç‚¹ï¼‰
-  3. æžç«¯é•¿å®½æ¯”ï¼ˆ> 3:1ï¼Œå¹¿å‘Šæ¨ªæ¡ï¼‰ä¸¢å¼ƒ
-  4. sha1 ç²¾ç¡®åŽ»é‡ï¼ˆå…¨å±€ï¼‰
-  5. dHash æ„ŸçŸ¥åŽ»é‡ï¼ˆæ±‰æ˜Žè·ç¦» <= 6 è§†ä¸ºåŒä¸€å¼ ï¼‰
-     - åŒç±»é‡å¤ â†’ ä¸¢åŽå‡ºçŽ°çš„é‚£å¼ 
-     - è·¨ç±»é‡å¤ â†’ ä¸¤å¼ éƒ½ä¸¢ï¼Œå› ä¸ºæ ‡ç­¾æœ¬èº«è‡ªç›¸çŸ›ç›¾ï¼Œç•™ç€åªä¼šæ±¡æŸ“æ¨¡åž‹
-  6. è¾“å‡º dataset/clean/<class>/ å¹¶æ‰“å°æ¯ä¸ªç±»åˆ«çš„æ•°é‡
+规则:
+  1. 只接受能完整解码的图片，统一转 RGB、按 EXIF 摆正
+  2. 短边 < 400px 丢弃（模型输入 224，太小的图放大后全是噪点）
+  3. 极端长宽比（> 3:1，广告横条）丢弃
+  4. sha1 精确去重（全局）
+  5. dHash 感知去重（汉明距离 <= 6 视为同一张）
+     - 同类重复 → 丢后出现的那张
+     - 跨类重复 → 两张都丢，因为标签本身自相矛盾，留着只会污染模型
+  6. 输出 dataset/clean/<class>/ 并打印每个类别的数量
 
-ç”¨æ³•: python training/clean_strict.py
+用法: python training/clean_strict.py
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ MIN_SIDE = 400
 MAX_ASPECT = 3.0
 DUPE_HAMMING = 6
 ALLOWED = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-# æ¨¡åž‹è¾“å…¥åªæœ‰ 224ï¼Œå­˜ 1024px çº¯å±žæµªè´¹ï¼ˆæ•°æ®é›† 267MB -> 90MBï¼‰
+# 模型输入只有 224，存 1024px 纯属浪费（数据集 267MB -> 90MB）
 MAX_SIDE = 768
 JPEG_QUALITY = 88
 
@@ -79,7 +79,7 @@ def source_files() -> dict[str, list[Path]]:
         if not src.is_dir():
             continue
         for cls_dir in sorted(p for p in src.iterdir() if p.is_dir()):
-            # manifest.csv ä¹‹ç±»ä¸æ˜¯ç±»åˆ«ç›®å½•
+            # manifest.csv 之类不是类别目录
             if cls_dir.name.startswith(".") or cls_dir.name == "processed":
                 continue
             files = [
@@ -97,11 +97,11 @@ def main():
 
     by_cls = source_files()
     if not by_cls:
-        print(f"!! æ²¡æœ‰ä»»ä½•åŽŸå§‹å›¾ç‰‡ï¼Œå…ˆè·‘ training/fetch_dataset.py")
+        print(f"!! 没有任何原始图片，先跑 training/fetch_dataset.py")
         return
 
     seen_sha: set[str] = set()
-    # å·²ä¿ç•™å›¾ç‰‡: (class, path, dhash)
+    # 已保留图片: (class, path, dhash)
     kept: list[tuple[str, Path, int]] = []
     stats = {c: {"read": 0, "bad": 0, "dupe": 0, "cross": 0} for c in by_cls}
     dropped_cross: set[Path] = set()
@@ -134,28 +134,28 @@ def main():
             seen_sha.add(sha)
             out_dir = OUT / cls
             out_dir.mkdir(parents=True, exist_ok=True)
-            # ä¿ç•™åŽŸæ–‡ä»¶åï¼šè¿™æ · test_tflite è¿˜èƒ½å›žæŸ¥ curated_report.csv é‡Œçš„æ¥æº/domain
+            # 保留原文件名：这样 test_tflite 还能回查 curated_report.csv 里的来源/domain
             out_path = out_dir / p.name
             if out_path.exists():
                 out_path = out_dir / f"{p.stem}__{len(list(out_dir.glob('*.jpg'))):04d}{p.suffix.lower()}"
             im.save(out_path, "JPEG", quality=JPEG_QUALITY)
             kept.append((cls, out_path, h))
 
-    print("\n=== æ¸…æ´—ç»“æžœ ===")
+    print("\n=== 清洗结果 ===")
     total = 0
     for cls in sorted(by_cls):
         n = len(list((OUT / cls).glob("*.jpg"))) if (OUT / cls).is_dir() else 0
         total += n
         s = stats[cls]
         print(f"  {cls:11s} kept={n:4d}  "
-              f"(è¯»å…¥ {s['read']}, åå›¾ {s['bad']}, é‡å¤ {s['dupe']}, è·¨ç±»å†²çª {s['cross']})")
-    print(f"  åˆè®¡ {total} å¼  -> {OUT}")
+              f"(读入 {s['read']}, 坏图 {s['bad']}, 重复 {s['dupe']}, 跨类冲突 {s['cross']})")
+    print(f"  合计 {total} 张 -> {OUT}")
 
     sizes = [len(list((OUT / c).glob('*.jpg'))) for c in sorted(by_cls)]
     if sizes and max(sizes) > 0:
         ratio = max(sizes) / max(1, min(sizes))
         if ratio > 1.8:
-            print(f"  [warn] ç±»åˆ«ä¸å¹³è¡¡ max/min = {ratio:.2f}ï¼Œè®­ç»ƒæ—¶ä¼šç”¨ class_weight è¡¥å¿")
+            print(f"  [warn] 类别不平衡 max/min = {ratio:.2f}，训练时会用 class_weight 补偿")
 
 
 if __name__ == "__main__":

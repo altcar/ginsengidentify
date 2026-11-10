@@ -89,6 +89,15 @@
                 android:resource="@xml/ginseng_widget_info" />
         </receiver>
 
+        <!-- FCM（保留）：没有配置 Firebase 凭据时不会初始化，也不会收到消息 -->
+        <service
+            android:name=".notify.GinsengMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

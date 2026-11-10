@@ -3,6 +3,8 @@ package com.example.ginsengidentifier
 import android.Manifest
 import android.app.PictureInPictureParams
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -16,6 +18,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.util.Rational
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -56,7 +59,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
 import com.example.ginsengidentifier.data.ScanStore
+import com.example.ginsengidentifier.notify.FirebasePush
 import com.example.ginsengidentifier.notify.Notifications
+import com.example.ginsengidentifier.notify.NtfySubscriber
 import com.example.ginsengidentifier.notify.ReminderWorker
 import com.example.ginsengidentifier.scanner.ModelHolder
 import com.example.ginsengidentifier.scanner.OverlayService
@@ -134,7 +139,7 @@ class MainActivity : ComponentActivity() {
                 .build()
             enterPictureInPictureMode(params)
         } catch (t: Throwable) {
-            Log.w("MainActivity", "PiP ä¸å¯ç”¨: ${t.message}")
+            Log.w("MainActivity", "PiP 不可用: ${t.message}")
         }
     }
 }
@@ -169,9 +174,18 @@ fun AppRoot(
     var streamEnabled by remember { mutableStateOf(ScanStore.isStreamEnabled()) }
     var overlayEnabled by remember { mutableStateOf(false) }
     var streamClients by remember { mutableIntStateOf(0) }
+    var ntfyEnabled by remember { mutableStateOf(ScanStore.isNtfyEnabled()) }
+    val ntfyTopic = remember { ScanStore.ntfyTopic() }
+    val fcmConfigured = remember { FirebasePush.isConfigured }
     val modelReady = remember { classifier.isReady() }
 
-    // è®¢é˜…è€…æ•°é‡è½®è¯¢ï¼ˆWebSocket å®¢æˆ·ç«¯ï¼‰
+    // 冷启动时恢复订阅
+    LaunchedEffect(Unit) {
+        if (ntfyEnabled) NtfySubscriber.start(context, ntfyTopic)
+        if (ScanStore.isFcmEnabled() && fcmConfigured) FirebasePush.init(context)
+    }
+
+    // 订阅者数量轮询（WebSocket 客户端）
     LaunchedEffect(streamEnabled, scanning) {
         while (true) {
             streamClients = if (streamEnabled) StreamServer.clientCount() else 0
@@ -181,7 +195,7 @@ fun AppRoot(
 
     fun startScan() {
         if (!classifier.isReady()) {
-            screen = Screen.Error(classifier.lastError ?: "æ¨¡åž‹æœªåŠ è½½")
+            screen = Screen.Error(classifier.lastError ?: "模型未加载")
             return
         }
         ScannerService.start(context)
@@ -197,7 +211,7 @@ fun AppRoot(
 
     fun startClassify(uri: Uri) {
         if (!classifier.isReady()) {
-            screen = Screen.Error(classifier.lastError ?: "æ¨¡åž‹æœªåŠ è½½")
+            screen = Screen.Error(classifier.lastError ?: "模型未加载")
             loading = false
             return
         }
@@ -217,7 +231,7 @@ fun AppRoot(
     val cameraPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startScan() else screen = Screen.Error("éœ€è¦ç›¸æœºæƒé™æ‰èƒ½å®žæ—¶æ‰«æ")
+        if (granted) startScan() else screen = Screen.Error("需要相机权限才能实时扫描")
     }
 
     val notifPermLauncher = rememberLauncherForActivityResult(
@@ -254,13 +268,13 @@ fun AppRoot(
             cameraUri = uri.toString()
             cameraLauncher.launch(uri)
         } catch (e: ActivityNotFoundException) {
-            screen = Screen.Error("æ²¡æœ‰æ‰¾åˆ°å¯ç”¨çš„ç›¸æœºåº”ç”¨")
+            screen = Screen.Error("没有找到可用的相机应用")
         } catch (t: Throwable) {
-            screen = Screen.Error("æ— æ³•æ‰“å¼€ç›¸æœºï¼š${t.message}")
+            screen = Screen.Error("无法打开相机：${t.message}")
         }
     }
 
-    // é€šçŸ¥ç‚¹è¿›æ¥ / å°ç»„ä»¶ç‚¹è¿›æ¥ -> ç›´æŽ¥å¼€æ‰«æ
+    // 通知点进来 / 小组件点进来 -> 直接开扫描
     LaunchedEffect(autoScan) {
         if (autoScan) {
             onAutoScanConsumed()
@@ -295,7 +309,7 @@ fun AppRoot(
                                 )
                             )
                         } catch (t: Throwable) {
-                            screen = Screen.Error("æ— æ³•æ‰“å¼€æ‚¬æµ®çª—æƒé™è®¾ç½®")
+                            screen = Screen.Error("无法打开悬浮窗权限设置")
                         }
                     }
                 } else {
@@ -308,7 +322,7 @@ fun AppRoot(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("å‚ä¸‰å‘³è¯†åˆ«") },
+                    title = { Text("参三味识别") },
                     navigationIcon = {
                         com.example.ginsengidentifier.ui.LogoMark(
                             Modifier
@@ -331,6 +345,9 @@ fun AppRoot(
                         streamEnabled = streamEnabled,
                         streamClients = streamClients,
                         overlayEnabled = overlayEnabled,
+                        ntfyEnabled = ntfyEnabled,
+                        ntfyTopic = ntfyTopic,
+                        fcmConfigured = fcmConfigured,
                         onStartScan = {
                             if (ContextCompat.checkSelfPermission(
                                     context, Manifest.permission.CAMERA
@@ -384,8 +401,32 @@ fun AppRoot(
                                         )
                                     )
                                 } catch (t: Throwable) {
-                                    screen = Screen.Error("æ— æ³•æ‰“å¼€æ‚¬æµ®çª—æƒé™è®¾ç½®")
+                                    screen = Screen.Error("无法打开悬浮窗权限设置")
                                 }
+                            }
+                        },
+                        onToggleNtfy = { want ->
+                            ScanStore.setNtfyEnabled(want)
+                            ntfyEnabled = want
+                            if (want) {
+                                NtfySubscriber.start(context, ntfyTopic)
+                                Toast.makeText(context, "已订阅 $ntfyTopic", Toast.LENGTH_SHORT).show()
+                            } else {
+                                NtfySubscriber.stop()
+                            }
+                        },
+                        onCopyTopic = {
+                            val cm = context.getSystemService(ClipboardManager::class.java)
+                            cm?.setPrimaryClip(ClipData.newPlainText("ntfy topic", ntfyTopic))
+                            Toast.makeText(context, "已复制主题", Toast.LENGTH_SHORT).show()
+                        },
+                        onTestPush = {
+                            NtfySubscriber.publishTest(context, ntfyTopic) { ok ->
+                                Toast.makeText(
+                                    context,
+                                    if (ok) "已发送，等 1-2 秒看通知" else "发送失败（网络或限流）",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         },
                     )
@@ -415,19 +456,19 @@ fun AppRoot(
     }
 }
 
-/** é¡¶æ å›¾æ ‡ç”¨å°å†…è¾¹è·ï¼Œé¿å…å†å¼•å…¥ Dp å¸¸é‡ã€‚ */
+/** 顶栏图标用小内边距，避免再引入 Dp 常量。 */
 
-/** é¡¶æ å›¾æ ‡ç”¨å°å†…è¾¹è·ï¼Œé¿å…å†å¼•å…¥ Dp å¸¸é‡ã€‚ */
+/** 顶栏图标用小内边距，避免再引入 Dp 常量。 */
 
 // ---------- helpers ----------
 
 private fun classifyFromUri(context: Context, classifier: Classifier, uri: Uri): Screen {
     return try {
         val bitmap = decodeSampled(context, uri)
-            ?: return Screen.Error("å›¾ç‰‡è§£ç å¤±è´¥ï¼Œæˆ–æ ¼å¼ä¸å—æ”¯æŒ")
+            ?: return Screen.Error("图片解码失败，或格式不受支持")
         val rotated = fixRotation(context, uri, bitmap)
         val preds = classifier.classify(rotated)
-        if (preds.isEmpty()) Screen.Error(classifier.lastError ?: "æŽ¨ç†å¤±è´¥")
+        if (preds.isEmpty()) Screen.Error(classifier.lastError ?: "推理失败")
         else Screen.Result(rotated, preds)
     } catch (t: Throwable) {
         Log.e("MainActivity", "classify failed", t)

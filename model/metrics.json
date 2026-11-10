@@ -1,67 +1,85 @@
 {
   "classes": [
     "jiegeng",
+    "other",
     "renshen",
     "xiyangshen"
   ],
-  "num_classes": 3,
-  "val_accuracy": 0.8519,
-  "test_accuracy": 0.8485,
-  "test_loss": 0.4164,
+  "num_classes": 4,
+  "val_accuracy": 0.8868,
+  "test_accuracy": 0.8611,
+  "test_loss": 0.4174,
   "confusion_matrix": {
     "labels": [
       "jiegeng",
+      "other",
       "renshen",
       "xiyangshen"
     ],
     "matrix": [
       [
-        64,
+        65,
         0,
-        5
+        4,
+        0
       ],
       [
+        0,
+        42,
+        8,
+        1
+      ],
+      [
+        0,
+        0,
+        21,
+        6
+      ],
+      [
+        6,
+        0,
         5,
-        15,
-        7
-      ],
-      [
-        7,
-        1,
-        61
+        58
       ]
     ]
   },
   "per_class": {
     "jiegeng": {
-      "precision": 0.8421,
-      "recall": 0.9275,
-      "f1": 0.8828,
+      "precision": 0.9155,
+      "recall": 0.942,
+      "f1": 0.9286,
       "support": 69
     },
+    "other": {
+      "precision": 1.0,
+      "recall": 0.8235,
+      "f1": 0.9032,
+      "support": 51
+    },
     "renshen": {
-      "precision": 0.9375,
-      "recall": 0.5556,
-      "f1": 0.6977,
+      "precision": 0.5526,
+      "recall": 0.7778,
+      "f1": 0.6462,
       "support": 27
     },
     "xiyangshen": {
-      "precision": 0.8356,
-      "recall": 0.8841,
-      "f1": 0.8592,
+      "precision": 0.8923,
+      "recall": 0.8406,
+      "f1": 0.8657,
       "support": 69
     }
   },
   "class_weight": {
-    "jiegeng": 0.7956,
-    "renshen": 2.0738,
-    "xiyangshen": 0.7931
+    "jiegeng": 0.7799,
+    "other": 1.0644,
+    "renshen": 2.0328,
+    "xiyangshen": 0.7774
   },
-  "num_train": 759,
+  "num_train": 992,
   "warmup_epochs": 8,
   "finetune_epochs": 25,
   "img_size": 224,
   "preprocess": "center_crop_square_then_resize_224|rgb|float32[0,255]",
-  "elapsed_sec": 270.4,
+  "elapsed_sec": 446.7,
   "tf_version": "2.21.0"
 }

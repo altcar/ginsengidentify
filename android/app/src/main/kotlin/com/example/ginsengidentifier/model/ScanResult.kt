@@ -8,26 +8,37 @@ data class ScanResult(
     val runnerUpLabel: String = "",
     val runnerUpConfidence: Float = 0f,
     val timestamp: Long = System.currentTimeMillis(),
+    /** 给用户看的一句话说明，例如"画面太暗" */
+    val note: String = "",
 ) {
     val confidencePercent: String get() = "%.0f%%".format(confidence * 100)
 
-    /** 低于阈值就不要装成"确定"，UI 和通知都按"可能不是这三类"处理。 */
-    val isConfident: Boolean get() = confidence >= CONFIDENCE_FLOOR
+    /** 第 4 类：什么都没检测到。 */
+    val isOther: Boolean get() = label == LABEL_OTHER
+
+    /** 低于阈值就不要装成"确定"。 */
+    val isConfident: Boolean get() = !isOther && confidence >= CONFIDENCE_FLOOR
 
     fun toJson(): String = buildString {
         append('{')
         append("\"label\":\"").append(label).append("\",")
         append("\"display\":\"").append(displayName).append("\",")
+        append("\"detected\":").append(!isOther).append(',')
         append("\"confidence\":").append("%.4f".format(confidence)).append(',')
         append("\"runner_up\":\"").append(runnerUpLabel).append("\",")
         append("\"runner_up_confidence\":").append("%.4f".format(runnerUpConfidence)).append(',')
-        append("\"confident\":").append(isConfident).append(',')
+        append("\"note\":\"").append(note.replace("\"", "'")).append("\",")
         append("\"timestamp\":").append(timestamp)
         append('}')
     }
 
     companion object {
         const val CONFIDENCE_FLOOR = 0.55f
+        const val LABEL_OTHER = "other"
+        const val NO_DETECTION = "未检测到相关药材"
+
+        fun none(reason: String): ScanResult =
+            ScanResult(LABEL_OTHER, NO_DETECTION, 0f, note = reason)
     }
 }
 

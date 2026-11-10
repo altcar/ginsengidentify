@@ -48,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -89,12 +90,18 @@ fun HomeScreen(
     streamEnabled: Boolean,
     streamClients: Int,
     overlayEnabled: Boolean,
+    ntfyEnabled: Boolean,
+    ntfyTopic: String,
+    fcmConfigured: Boolean,
     onStartScan: () -> Unit,
     onCamera: () -> Unit,
     onPick: () -> Unit,
     onToggleSubscribe: (Boolean) -> Unit,
     onToggleStream: (Boolean) -> Unit,
     onToggleOverlay: (Boolean) -> Unit,
+    onToggleNtfy: (Boolean) -> Unit,
+    onCopyTopic: () -> Unit,
+    onTestPush: () -> Unit,
 ) {
     val surface = MaterialTheme.colorScheme.surface
 
@@ -255,6 +262,49 @@ fun HomeScreen(
             }
         }
 
+        // ── 远程推送 ──
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = surface),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("远程推送", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        if (fcmConfigured) "FCM 已配置" else "FCM 未配置",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (fcmConfigured)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.outline,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("免费通道 · ntfy.sh", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            ntfyTopic,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Switch(checked = ntfyEnabled, onCheckedChange = onToggleNtfy)
+                }
+                Text(
+                    "任何设备 POST 到 https://ntfy.sh/$ntfyTopic 就会推送到这台手机，无需账号、无需 Firebase。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row {
+                    TextButton(onClick = onCopyTopic) { Text("复制主题") }
+                    TextButton(onClick = onTestPush) { Text("发送测试") }
+                }
+            }
+        }
+
         // ── 单张识别 ──
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FilledTonalButton(
@@ -388,18 +438,19 @@ fun LiveScreen(
                 Text(
                     latest?.displayName ?: "识别中…",
                     color = Color(0xFFF4EFE2),
-                    fontSize = 30.sp,
+                    fontSize = if (latest?.isOther == true) 20.sp else 30.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    latest?.confidencePercent ?: "--",
+                    if (latest?.isOther == true) (latest.note.ifEmpty { "换个角度" })
+                    else latest?.confidencePercent ?: "--",
                     color = Color(0xFF8CD5B8),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(10.dp))
                 LinearProgressIndicator(
-                    progress = { latest?.confidence ?: 0f },
+                    progress = { if (latest?.isOther == true) 0f else latest?.confidence ?: 0f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
@@ -450,15 +501,7 @@ fun LiveScreen(
             }
         }
 
-        // 取景框
-        Box(
-            Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.72f)
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(28.dp))
-                .background(Color(0x14FFFFFF)),
-        )
+        // 取景框（QR 式的方框已经去掉：这是识别器，不是扫码器）
 
         // 底部结果卡
         Column(
@@ -475,11 +518,14 @@ fun LiveScreen(
                 Column(Modifier.padding(18.dp)) {
                     val accent = when {
                         latest == null -> Color(0xFF8A938C)
+                        latest.isOther -> ClassUnknown
                         latest.isConfident -> Color(0xFF8CD5B8)
                         else -> ClassUnknown
                     }
                     val hint = if (latest == null) {
-                        "把药材放进框内，保持 1-2 秒"
+                        "把药材放进画面，保持 1-2 秒"
+                    } else if (latest.isOther) {
+                        latest.note.ifEmpty { "换个角度，让药材占满画面" }
                     } else if (!latest.isConfident) {
                         "置信度偏低，换个角度或放到纯色背景上"
                     } else if (latest.runnerUpLabel.isNotEmpty()) {
@@ -492,19 +538,22 @@ fun LiveScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             latest?.displayName ?: "对准药材…",
-                            color = Color(0xFFF4EFE2),
-                            style = MaterialTheme.typography.displaySmall,
+                            color = if (latest?.isOther == true) Color(0xFFE8C48A) else Color(0xFFF4EFE2),
+                            style = if (latest?.isOther == true)
+                                MaterialTheme.typography.headlineSmall
+                            else
+                                MaterialTheme.typography.displaySmall,
                         )
                         Spacer(Modifier.weight(1f))
                         Text(
-                            latest?.confidencePercent ?: "",
+                            if (latest?.isOther == true) "" else latest?.confidencePercent ?: "",
                             color = accent,
                             style = MaterialTheme.typography.titleLarge,
                         )
                     }
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
-                        progress = { latest?.confidence ?: 0f },
+                        progress = { if (latest?.isOther == true) 0f else latest?.confidence ?: 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -616,8 +665,10 @@ fun ResultScreen(
         }
 
         val top = predictions.first()
-        val lowConfidence = top.confidence < ScanResult.CONFIDENCE_FLOOR
-        val accent = if (lowConfidence) ClassUnknown else classColorOf(top.label)
+        val isOther = top.label == ScanResult.LABEL_OTHER
+        val lowConfidence = !isOther && top.confidence < ScanResult.CONFIDENCE_FLOOR
+        val accent = if (isOther || lowConfidence) ClassUnknown else classColorOf(top.label)
+        val candidates = predictions.filter { it.label != ScanResult.LABEL_OTHER }
 
         item {
             Card(
@@ -629,14 +680,17 @@ fun ResultScreen(
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text(
-                        "识别结果",
+                        if (isOther) "检测结果" else "识别结果",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         top.displayName,
-                        style = MaterialTheme.typography.displaySmall,
+                        style = if (isOther)
+                            MaterialTheme.typography.headlineMedium
+                        else
+                            MaterialTheme.typography.displaySmall,
                         color = accent,
                     )
                     Spacer(Modifier.height(2.dp))
@@ -645,22 +699,24 @@ fun ResultScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(14.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "置信度 ${top.confidencePercent}",
-                            style = MaterialTheme.typography.titleMedium,
+                    if (!isOther) {
+                        Spacer(Modifier.height(14.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "置信度 ${top.confidencePercent}",
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { top.confidence },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape),
+                            color = accent,
                         )
                     }
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { top.confidence },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape),
-                        color = accent,
-                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -679,7 +735,7 @@ fun ResultScreen(
 
         item {
             Text(
-                "全部候选",
+                if (isOther) "最接近的三类（供参考）" else "全部候选",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -688,7 +744,7 @@ fun ResultScreen(
             )
         }
 
-        items(predictions) { p ->
+        items(candidates) { p ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()

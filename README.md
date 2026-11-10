@@ -7,6 +7,22 @@
 
 ---
 
+## v2.1 修复（本轮）
+
+| 问题 | 原因 | 处理 |
+|---|---|---|
+| **实时模式"有画面没结果 / 有结果没画面"** | Activity 绑 `Preview`、Service 绑 `ImageAnalysis`，两个 LifecycleOwner 各自 `bindToLifecycle`，CameraX 互相顶掉 | 抽成 `ScanEngine` + 单次 `bindToLifecycle(Preview, Analysis)`；`uiActive` 状态机保证同一时刻只有一个 owner |
+| **拍什么都没有也报 93% 人参** | 三分类 softmax 恒和为 1，没有"什么都不是"的出口 | 加第 4 类 `other`（334 张负样本：货架/食物/招牌/文档 + 纯色/噪声/黑屏/过曝），再加 `FrameGate` 拦掉过暗/过曝/纯色帧 |
+| **界面全是乱码（"cantonese"）** | 之前用 PowerShell 的 `Get-Content → Set-Content` 改文件，UTF-8 被按 ANSI 读入再以 UTF-8 写出，**双重编码** | 全仓库扫描并修复（`MainActivity.kt` 15 行、`clean_strict.py` 20 行），删除遗留的乱码脚本 |
+| **Logo 丑** | 细线条骨架图，缩小后糊成一团 | 改成实心剪影：浑圆根头 + 收窄主干 + 两条外撇的腿 + 红果；同步换成 adaptive / monochrome 图标 |
+| **扫码框** | UI 画了一个 QR 式方框 | 已去掉；识别结果用整屏卡片呈现 |
+| **推送要花钱/要账号** | 只有本地通知 | 新增 ntfy.sh 免费通道（无账号、无 Firebase）+ 保留 FCM（凭据用 Gradle 属性注入，不提交密钥） |
+
+> 编码这件事我复核过：仓库里**所有** `.kt/.py/.md/.xml/.json` 现在都不含双重编码，
+> 并且 APK 里的 `app_name` 用 `aapt2 dump badging` 验证过是「参三味识别」。
+
+---
+
 ## v2.0 新增
 
 | 功能 | 说明 |
@@ -47,14 +63,19 @@ ginsengidentify/
     ├── model/ScanResult.kt           ← ScanResult + ScanStats
     ├── data/ScanStore.kt             ← 连续天数 / 今日次数 / 开关
     ├── scanner/
-    │   ├── ScannerService.kt         ← 前台服务：相机 + 持续推理 + 常驻通知
+    │   ├── ScanEngine.kt             ← 帧→结果 唯一管线（节流/防抖/计数）
+    │   ├── FrameGate.kt              ← 过暗/过曝/纯色 帧级拒绝
+    │   ├── ScannerService.kt         ← 前台服务：相机 + 常驻通知
     │   ├── OverlayService.kt         ← 悬浮窗
     │   ├── StreamServer.kt           ← 内置 WebSocket 服务端
     │   ├── ResultBus.kt              ← 结果总线（多消费者）
     │   └── ModelHolder.kt            ← 进程内共享 Interpreter
     ├── notify/
     │   ├── Notifications.kt          ← 通知渠道 / 常驻通知 / 提醒
-    │   └── ReminderWorker.kt         ← 每日打卡提醒
+    │   ├── ReminderWorker.kt         ← 每日打卡提醒
+    │   ├── NtfySubscriber.kt         ← 免费远程推送（ntfy.sh, SSE）
+    │   ├── FirebasePush.kt           ← FCM（Gradle 属性注入凭据）
+    │   └── GinsengMessagingService.kt← FCM 消息 → 通知
     ├── ui/
     │   ├── Screens.kt                ← Home / Live / Result
     │   ├── CameraPreview.kt          ← 取景器（只绑 Preview）
@@ -140,25 +161,54 @@ ws.onmessage = e => console.log(JSON.parse(e.data));
 
 ---
 
-## 推送
+## 推送（两条通道 + 价目）
 
-当前实现（无需任何账号）：
+### 1. 免费通道：ntfy.sh（现在就能用，无需账号）
 
-| 场景 | 实现 |
-|---|---|
-| 识别结果提醒 | `ScannerService` → `Notifications.notifyResult()`，25s 节流 |
-| 每日打卡提醒 | `ReminderWorker`，每天 20:00 检查，未完成目标才提醒 |
-| 常驻状态 | 前台服务通知，实时更新 |
+App 订阅一个随机 topic（例如 `ginseng-k7m2x9pq`），用 SSE 长连接收消息：
 
-接 FCM（需要你自己建 Firebase 项目）：
+```bash
+# 任何设备、任何语言，只要能发 HTTP
+curl -d "人参快用完了" https://ntfy.sh/ginseng-k7m2x9pq
+```
 
-1. Firebase 控制台建项目 → 添加 Android 应用（包名 `com.example.ginsengidentifier`）
-2. 下载 `google-services.json` 放到 `android/app/`
-3. `build.gradle.kts` 加 `id("com.google.gms.google-services") version "4.4.2"`
-4. 依赖 `implementation("com.google.firebase:firebase-messaging-ktx:24.0.1")`
-5. 实现 `FirebaseMessagingService.onMessageReceived()` → 调 `Notifications.notifyResult()`
+- 首页「远程推送」卡片里可以看到/复制自己的 topic，点「发送测试」立刻验证链路
+- topic 名就是密码，所以用随机串
+- **价格**：公共服务器免费、无需注册，约 **250 条/天/IP**、消息缓存 12 小时；
+  自建 ntfy 完全免费无限；付费档 Supporter **$6/mo**（$5 年付）、Pro **$12/mo**、Business **$25/mo**
 
-服务端只负责把消息推给 FCM；识别仍然在端上，不需要上传照片。
+### 2. FCM（保留，需要你自己的 Firebase 项目）
+
+代码已经在仓库里：`notify/FirebasePush.kt` + `notify/GinsengMessagingService.kt`，
+**没有**提交 `google-services.json`，也没加 google-services 插件（否则 clone 下来直接构建失败）。
+凭据走 Gradle 属性注入，运行时手动 `FirebaseApp.initializeApp()`：
+
+```properties
+# android/gradle.properties  （已 gitignore）
+FCM_PROJECT_ID=your-project
+FCM_APP_ID=1:1234567890:android:abcdef
+FCM_API_KEY=AIza...
+FCM_SENDER_ID=1234567890
+```
+
+配置后 App 会自动订阅 `ginseng-alerts` 话题；服务端用 HTTP v1 发到该 topic 即可。
+
+### 3. 价格
+
+| 项目 | 价格 | 限额 |
+|---|---|---|
+| **FCM** | **$0**（Spark 和 Blaze 都免费） | 不限条数；600k 条/分钟/项目，240 条/分钟/单设备，单条 4 KB |
+| ntfy.sh 公共 | **$0**，无需账号 | ~250 条/天/IP，缓存 12h |
+| ntfy 自建 | **$0**（Apache-2.0） | 取决于你的服务器 |
+| ntfy Supporter / Pro / Business | $6 / $12 / $25 每月（年付 $5 / $10 / $20） | 2.5k / 20k / 50k 条每天，可保留 topic |
+| OneSignal（对照） | 免费档很小；$19/mo 起 | 免费档约 1k 订阅者 |
+
+> 结论：**两个通道都不花钱**。FCM 免费但不含"发送端"——你得自己写服务端；
+> ntfy 连服务端都省了，一条 `curl` 就能推。要长期稳定/自定义域名再考虑 $6/mo 的 ntfy。
+
+### 4. 本地通知（始终可用）
+
+识别结果提醒（25s 节流）+ 每天 20:00 打卡提醒（WorkManager），不依赖网络。
 
 ---
 
@@ -210,7 +260,8 @@ CLIP 半自动剔除"提到人参但不是药材图"的噪声，再做感知哈�
 | raw_dl（抓取） | 1175 |
 | curated（CLIP 过滤后） | 1184 |
 | clean（去重后） | 1086（455 / 175 / 456） |
-| train / val / test | 759 / 162 / 165 |
+| + `other` 负类 | 334（quarantine 184 + 合成 150） |
+| train / val / test | 992 / 212 / 216 |
 
 详见 [`dataset/README.md`](dataset/README.md)。
 
@@ -220,29 +271,36 @@ CLIP 半自动剔除"提到人参但不是药材图"的噪声，再做感知哈�
 |---|---|
 | Backbone | MobileNetV3Small (alpha=0.75) |
 | 输入 | 224×224×3 float32 RGB，值域 [0,255] |
-| TFLite | float16，**1208.7 KB** |
-| val / test（Keras） | 0.8519 / 0.8485 |
-| test（TFLite，与 Kotlin 预处理逐像素一致） | **0.8545** |
+| 输出 | **4 类**（含 `other`） |
+| TFLite | float16，**1209.5 KB** |
+| val / test（Keras） | 0.8868 / 0.8611 |
+| test（TFLite，与 Kotlin 预处理逐像素一致） | **0.8565** |
 
-| 类别 | Precision | Recall | F1 |
-|---|---:|---:|---:|
-| 桔梗 | 0.877 | 0.928 | 0.901 |
-| 人参 | 0.882 | **0.556** | 0.682 |
-| 西洋参 | 0.827 | 0.899 | 0.861 |
+| 类别 | Precision | Recall | F1 | 样本 |
+|---|---:|---:|---:|---:|
+| 桔梗 jiegeng | 0.868 | 0.957 | 0.910 | 69 |
+| **other（未检测到）** | **0.956** | **0.843** | 0.896 | 51 |
+| 人参 renshen | 0.606 | **0.741** | 0.667 | 27 |
+| 西洋参 xiyangshen | 0.903 | 0.812 | 0.855 | 69 |
 
 ```
 混淆矩阵（TFLite，行=真实，列=预测）
-                jiegeng   renshen  xiyangshen
-     jiegeng         64         0           5
-     renshen          4        15           8
-  xiyangshen          5         2          62
+                jiegeng     other   renshen  xiyangshen
+     jiegeng         66         0         2           1
+       other          1        43         7           0
+     renshen          1         1        20           5
+  xiyangshen          8         1         4          56
 ```
+
+`other` 的召回 84.3% 意味着：随手拍桌面、货架、食物、白墙，八成会明确告诉你
+**"未检测到相关药材"**，而不是硬报一个人参。人参 recall 也从 56% 提到 74% ——
+负类把决策边界拉开了。
 
 ### ⚠️ 按数据来源拆分
 
 | 来源 | 准确率 |
 |---|---|
-| iNaturalist + Wikimedia | **0.890**（137/154） |
+| iNaturalist + Wikimedia | **0.883**（181/205） |
 | 旧版 Bing 商品图 | **0.364**（4/11） |
 
 模型在植物学照片上很准，换到电商白底商品图就明显掉 —— 说明它学到的不只是形态，
@@ -252,18 +310,44 @@ CLIP 半自动剔除"提到人参但不是药材图"的噪声，再做感知哈�
 
 | 域 | 准确率 |
 |---|---|
-| 整株 / 叶片 | 0.876（78/89） |
+| 整株 / 叶片 | 0.888（79/89） |
 | 干燥根 / 切片 | 0.829（63/76） |
+| 负样本（other） | 0.843（43/51） |
+
+---
+
+## 关于「物体检测 / 分割」
+
+你要的是 YOLO 那种框/掩码输出，当前实现是**分类器 + 负类 + 帧级门控**，不是检测器。
+原因很直接：训练 detector 需要**框或掩码标注**，而现有数据集只有图像级类别标签
+（iNaturalist / Commons 给的是"这张图是某物种"，不是"药材在这个像素范围内"）。
+
+| 能力 | 状态 |
+|---|---|
+| 判断"画面里有没有相关药材" | ✅ `other` 负类 + `FrameGate`（过暗 / 过曝 / 纯色直接拒绝） |
+| 明确输出"未检测到相关药材" | ✅ 不再硬报三类之一 |
+| 框出药材位置 | ❌ 未做 —— 没有框标注，硬画一个框只会更糟 |
+| 像素级分割 | ❌ 未做 |
+
+要真正补上检测，工程量大致是：
+
+1. 用现有分类器筛高置信样本，用 SAM / GroundingDINO 生成候选掩码，人工复核
+2. 约 1500–2000 张框标注（每类 400+，覆盖切片、整根、整株）
+3. YOLOv8n-seg 或 MobileNetV3-DeepLab 训练 → TFLite（约 3–5 MB）
+4. 端上两阶段：先分割裁 ROI，再分类 —— 顺带能解决"背景偏置 / 商品图 36%"
+
+这需要 GPU 和标注时间，不是一次 commit 能做完的；这一轮先把
+**误报**（93% 人参）和**相机互相顶掉**这两个真正影响可用性的问题解决了。
 
 ---
 
 ## 已知限制
 
-1. **商品图域泛化差**（36%，n=11）—— 当前最大短板。
-2. **人参 recall 只有 56%** —— 可用图只有 175 张，且切片与西洋参极像。
-3. **没有"未知"类** —— 一定会选三类之一，只能靠 <55% 提示。
+1. **商品图域泛化差**（36%，n=11）—— 当前最大短板，两阶段 ROI 方案最有希望修它。
+2. **人参 recall 74%** —— 可用图只有 175 张，切片与西洋参仍易混。
+3. **没有框/掩码** —— 见上一节。
 4. **WebSocket 无鉴权** —— 局域网演示用。
-5. **推送依赖系统通知** —— 没有 FCM 就没有真正的跨设备/离线推送。
+5. **ntfy 公共 topic 是公开的** —— 名字即密码，别用可猜的 topic 传敏感内容。
 6. **持续扫描耗电** —— 3 fps + 前台服务，长时间开会烫；建议按需开启。
 
 ### 下一步

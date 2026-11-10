@@ -55,7 +55,7 @@ class SmokeTest {
     fun predictionsAreWellFormed() {
         val bitmap = loadSample("jiegeng_1.jpg")
         val preds = classifier.classify(bitmap)
-        assertEquals("应输出 3 个类别的概率", 3, preds.size)
+        assertEquals("应输出 4 个类别（含 other）", 4, preds.size)
         assertTrue("应按置信度降序", preds[0].confidence >= preds[1].confidence)
         assertTrue("置信度应在 [0,1]", preds.all { it.confidence in 0f..1f })
         val sum = preds.sumOf { it.confidence.toDouble() }
@@ -112,21 +112,21 @@ class SmokeTest {
         val white = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply {
             eraseColor(Color.WHITE)
         }
-        assertEquals(3, classifier.classify(white).size)
+        assertEquals(4, classifier.classify(white).size)
 
         // 1x1
         val tiny = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-        assertEquals(3, classifier.classify(tiny).size)
+        assertEquals(4, classifier.classify(tiny).size)
 
         // 非正方形（中心裁剪路径）
         val wide = Bitmap.createBitmap(800, 200, Bitmap.Config.ARGB_8888).apply {
             eraseColor(Color.GRAY)
         }
-        assertEquals(3, classifier.classify(wide).size)
+        assertEquals(4, classifier.classify(wide).size)
 
         // 透明图
         val transparent = Bitmap.createBitmap(300, 300, Bitmap.Config.ARGB_8888)
-        assertEquals(3, classifier.classify(transparent).size)
+        assertEquals(4, classifier.classify(transparent).size)
     }
 
     // ---------- 6. 界面能起来，且不闪退 ----------

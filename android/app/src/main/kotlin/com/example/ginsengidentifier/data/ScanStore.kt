@@ -26,6 +26,9 @@ object ScanStore {
     private const val KEY_SUBSCRIBED = "subscribed"
     private const val KEY_WS = "ws_enabled"
     private const val KEY_GOAL = "daily_goal"
+    private const val KEY_NTFY = "ntfy_enabled"
+    private const val KEY_NTFY_TOPIC = "ntfy_topic"
+    private const val KEY_FCM = "fcm_enabled"
     private const val PREFIX_COUNT = "count_"
 
     private val _stats = MutableStateFlow(ScanStats())
@@ -116,6 +119,28 @@ object ScanStore {
 
     fun setStreamEnabled(value: Boolean) {
         prefs().edit().putBoolean(KEY_WS, value).apply()
+    }
+
+    // ── 免费远程推送（ntfy）────────────────────────────────────────────
+    fun ntfyTopic(): String {
+        val p = prefs()
+        val existing = p.getString(KEY_NTFY_TOPIC, null)
+        if (!existing.isNullOrBlank()) return existing
+        val generated = com.example.ginsengidentifier.notify.NtfySubscriber.newTopic()
+        p.edit().putString(KEY_NTFY_TOPIC, generated).apply()
+        return generated
+    }
+
+    fun isNtfyEnabled(): Boolean = prefs().getBoolean(KEY_NTFY, false)
+
+    fun setNtfyEnabled(value: Boolean) {
+        prefs().edit().putBoolean(KEY_NTFY, value).apply()
+    }
+
+    fun isFcmEnabled(): Boolean = prefs().getBoolean(KEY_FCM, false)
+
+    fun setFcmEnabled(value: Boolean) {
+        prefs().edit().putBoolean(KEY_FCM, value).apply()
     }
 
     fun dailyGoal(): Int = prefs().getInt(KEY_GOAL, 10)

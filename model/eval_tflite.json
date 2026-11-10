@@ -1,81 +1,97 @@
 {
   "model": "model\\ginseng_model.tflite",
-  "accuracy": 0.8545,
-  "total": 165,
+  "accuracy": 0.8565,
+  "total": 216,
   "labels": [
     "jiegeng",
+    "other",
     "renshen",
     "xiyangshen"
   ],
   "confusion_matrix": [
     [
-      64,
+      66,
       0,
+      2,
+      1
+    ],
+    [
+      1,
+      43,
+      7,
+      0
+    ],
+    [
+      1,
+      1,
+      20,
       5
     ],
     [
+      8,
+      1,
       4,
-      15,
-      8
-    ],
-    [
-      5,
-      2,
-      62
+      56
     ]
   ],
   "per_class": {
     "jiegeng": {
-      "precision": 0.8767,
-      "recall": 0.9275,
-      "f1": 0.9014,
+      "precision": 0.8684,
+      "recall": 0.9565,
+      "f1": 0.9103,
       "support": 69
     },
+    "other": {
+      "precision": 0.9556,
+      "recall": 0.8431,
+      "f1": 0.8958,
+      "support": 51
+    },
     "renshen": {
-      "precision": 0.8824,
-      "recall": 0.5556,
-      "f1": 0.6818,
+      "precision": 0.6061,
+      "recall": 0.7407,
+      "f1": 0.6667,
       "support": 27
     },
     "xiyangshen": {
-      "precision": 0.8267,
-      "recall": 0.8986,
-      "f1": 0.8611,
+      "precision": 0.9032,
+      "recall": 0.8116,
+      "f1": 0.855,
       "support": 69
     }
   },
   "confidence": {
-    "correct_mean": 0.9174,
-    "wrong_mean": 0.6789
+    "correct_mean": 0.9092,
+    "wrong_mean": 0.6571
   },
   "files": [
     {
       "file": "jiegeng/000001.jpg",
       "true": "jiegeng",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.4925
+      "pred": "renshen",
+      "conf": 0.8763
     },
     {
       "file": "jiegeng/000007.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.652
+      "conf": 0.5202
     },
     {
       "file": "jiegeng/000015.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.5216
+      "conf": 0.6742
     },
     {
       "file": "jiegeng/000023.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.716
+      "conf": 0.8697
     },
     {
       "file": "jiegeng/jiegeng_00007.jpg",
@@ -89,28 +105,28 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9995
+      "conf": 0.9979
     },
     {
       "file": "jiegeng/jiegeng_00018.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00031.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9984
     },
     {
       "file": "jiegeng/jiegeng_00037.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00040.jpg",
@@ -123,15 +139,15 @@
       "file": "jiegeng/jiegeng_00043.jpg",
       "true": "jiegeng",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.6605
+      "pred": "jiegeng",
+      "conf": 0.6194
     },
     {
       "file": "jiegeng/jiegeng_00060.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9999
+      "conf": 0.9993
     },
     {
       "file": "jiegeng/jiegeng_00061.jpg",
@@ -152,42 +168,42 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9579
+      "conf": 0.9656
     },
     {
       "file": "jiegeng/jiegeng_00073.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9998
     },
     {
       "file": "jiegeng/jiegeng_00076.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9996
+      "conf": 1.0
     },
     {
       "file": "jiegeng/jiegeng_00090.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9995
+      "conf": 0.9998
     },
     {
       "file": "jiegeng/jiegeng_00096.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9893
+      "conf": 0.9809
     },
     {
       "file": "jiegeng/jiegeng_00097.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00098.jpg",
@@ -222,35 +238,35 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9999
+      "conf": 0.9995
     },
     {
       "file": "jiegeng/jiegeng_00121.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.6007
+      "conf": 0.6455
     },
     {
       "file": "jiegeng/jiegeng_00123.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00131.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9887
+      "conf": 0.7684
     },
     {
       "file": "jiegeng/jiegeng_00141.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00153.jpg",
@@ -264,14 +280,14 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9982
+      "conf": 0.9926
     },
     {
       "file": "jiegeng/jiegeng_00166.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9995
     },
     {
       "file": "jiegeng/jiegeng_00179.jpg",
@@ -292,7 +308,7 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00191.jpg",
@@ -306,7 +322,7 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9998
     },
     {
       "file": "jiegeng/jiegeng_00200.jpg",
@@ -320,28 +336,28 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9742
+      "conf": 0.9334
     },
     {
       "file": "jiegeng/jiegeng_00229.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.962
+      "conf": 0.9922
     },
     {
       "file": "jiegeng/jiegeng_00231.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9993
+      "conf": 0.9968
     },
     {
       "file": "jiegeng/jiegeng_00244.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9993
+      "conf": 0.9972
     },
     {
       "file": "jiegeng/jiegeng_00249.jpg",
@@ -355,35 +371,35 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.6415
+      "conf": 0.6013
     },
     {
       "file": "jiegeng/jiegeng_00260.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00269.jpg",
       "true": "jiegeng",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.6409
+      "pred": "renshen",
+      "conf": 0.6093
     },
     {
       "file": "jiegeng/jiegeng_00274.jpg",
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00275.jpg",
       "true": "jiegeng",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.8137
+      "pred": "jiegeng",
+      "conf": 0.3995
     },
     {
       "file": "jiegeng/jiegeng_00277.jpg",
@@ -397,7 +413,7 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9999
+      "conf": 0.9997
     },
     {
       "file": "jiegeng/jiegeng_00307.jpg",
@@ -432,7 +448,7 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9999
+      "conf": 1.0
     },
     {
       "file": "jiegeng/jiegeng_00338.jpg",
@@ -446,7 +462,7 @@
       "true": "jiegeng",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.9992
+      "conf": 0.9994
     },
     {
       "file": "jiegeng/jiegeng_00348.jpg",
@@ -467,7 +483,7 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00359.jpg",
@@ -481,7 +497,7 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9997
+      "conf": 0.9998
     },
     {
       "file": "jiegeng/jiegeng_00376.jpg",
@@ -509,14 +525,14 @@
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.9998
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00401.jpg",
       "true": "jiegeng",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 1.0
+      "conf": 0.9999
     },
     {
       "file": "jiegeng/jiegeng_00417.jpg",
@@ -533,676 +549,1033 @@
       "conf": 1.0
     },
     {
+      "file": "other/q_jiegeng_Image_16.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.7756
+    },
+    {
+      "file": "other/q_jiegeng_Image_17.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.5601
+    },
+    {
+      "file": "other/q_jiegeng_Image_19.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.8159
+    },
+    {
+      "file": "other/q_jiegeng_Image_22.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "jiegeng",
+      "conf": 0.7016
+    },
+    {
+      "file": "other/q_jiegeng_Image_29.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.5624
+    },
+    {
+      "file": "other/q_jiegeng_Image_5.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9586
+    },
+    {
+      "file": "other/q_jiegeng_Image_6.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9698
+    },
+    {
+      "file": "other/q_renshen_Image_1.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9671
+    },
+    {
+      "file": "other/q_renshen_Image_25.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9475
+    },
+    {
+      "file": "other/q_renshen_Image_26.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9501
+    },
+    {
+      "file": "other/q_renshen_Image_3.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9902
+    },
+    {
+      "file": "other/q_renshen_Image_34.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9919
+    },
+    {
+      "file": "other/q_renshen_Image_4.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9976
+    },
+    {
+      "file": "other/q_renshen_Image_6.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9886
+    },
+    {
+      "file": "other/q_renshen_renshen_00049.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.8875
+    },
+    {
+      "file": "other/q_renshen_renshen_00082.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.9477
+    },
+    {
+      "file": "other/q_renshen_renshen_00119.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.7328
+    },
+    {
+      "file": "other/q_renshen_renshen_00137.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.6631
+    },
+    {
+      "file": "other/q_renshen_renshen_00143.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.8028
+    },
+    {
+      "file": "other/q_renshen_renshen_00172.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.8037
+    },
+    {
+      "file": "other/q_renshen_renshen_00224.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.8875
+    },
+    {
+      "file": "other/q_renshen_renshen_00247.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.6527
+    },
+    {
+      "file": "other/q_renshen_renshen_00283.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9769
+    },
+    {
+      "file": "other/q_renshen_renshen_00284.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "renshen",
+      "conf": 0.9934
+    },
+    {
+      "file": "other/q_renshen_renshen_00287.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9807
+    },
+    {
+      "file": "other/q_renshen_renshen_00302.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9318
+    },
+    {
+      "file": "other/q_renshen_renshen_00303.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9998
+    },
+    {
+      "file": "other/q_xiyangshen_Image_1.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.6236
+    },
+    {
+      "file": "other/q_xiyangshen_Image_22.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9682
+    },
+    {
+      "file": "other/q_xiyangshen_Image_28.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.851
+    },
+    {
+      "file": "other/q_xiyangshen_Image_6.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9984
+    },
+    {
+      "file": "other/syn_0000.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9934
+    },
+    {
+      "file": "other/syn_0008.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9989
+    },
+    {
+      "file": "other/syn_0018.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9983
+    },
+    {
+      "file": "other/syn_0048.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9978
+    },
+    {
+      "file": "other/syn_0066.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9975
+    },
+    {
+      "file": "other/syn_0072.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9965
+    },
+    {
+      "file": "other/syn_0074.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9993
+    },
+    {
+      "file": "other/syn_0087.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9918
+    },
+    {
+      "file": "other/syn_0088.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9973
+    },
+    {
+      "file": "other/syn_0098.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9988
+    },
+    {
+      "file": "other/syn_0100.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.997
+    },
+    {
+      "file": "other/syn_0101.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.998
+    },
+    {
+      "file": "other/syn_0107.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9987
+    },
+    {
+      "file": "other/syn_0120.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.975
+    },
+    {
+      "file": "other/syn_0123.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.991
+    },
+    {
+      "file": "other/syn_0124.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9967
+    },
+    {
+      "file": "other/syn_0139.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9994
+    },
+    {
+      "file": "other/syn_0141.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9908
+    },
+    {
+      "file": "other/syn_0143.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9951
+    },
+    {
+      "file": "other/syn_0144.jpg",
+      "true": "other",
+      "domain": "?",
+      "pred": "other",
+      "conf": 0.9975
+    },
+    {
       "file": "renshen/000012.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.8633
+      "conf": 0.531
     },
     {
       "file": "renshen/000016.jpg",
       "true": "renshen",
       "domain": "plant",
-      "pred": "jiegeng",
-      "conf": 0.4844
+      "pred": "renshen",
+      "conf": 0.946
     },
     {
       "file": "renshen/renshen_00002.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.4855
+      "conf": 0.3923
     },
     {
       "file": "renshen/renshen_00007.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.8326
+      "conf": 0.5284
     },
     {
       "file": "renshen/renshen_00010.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.8889
+      "conf": 0.6695
     },
     {
       "file": "renshen/renshen_00019.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.3988
+      "conf": 0.6877
     },
     {
       "file": "renshen/renshen_00021.jpg",
       "true": "renshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.6922
+      "pred": "renshen",
+      "conf": 0.7235
     },
     {
       "file": "renshen/renshen_00041.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.9855
+      "conf": 0.696
     },
     {
       "file": "renshen/renshen_00048.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.5382
+      "conf": 0.9663
     },
     {
       "file": "renshen/renshen_00061.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.6704
+      "conf": 0.6836
     },
     {
       "file": "renshen/renshen_00069.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8057
+      "conf": 0.5454
     },
     {
       "file": "renshen/renshen_00072.jpg",
       "true": "renshen",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.6557
+      "pred": "renshen",
+      "conf": 0.6856
     },
     {
       "file": "renshen/renshen_00084.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.712
+      "conf": 0.7663
     },
     {
       "file": "renshen/renshen_00085.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.436
+      "conf": 0.7417
     },
     {
       "file": "renshen/renshen_00086.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.762
+      "conf": 0.9257
     },
     {
       "file": "renshen/renshen_00087.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.9849
+      "conf": 0.9991
     },
     {
       "file": "renshen/renshen_00097.jpg",
       "true": "renshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.7542
+      "pred": "renshen",
+      "conf": 0.612
     },
     {
       "file": "renshen/renshen_00106.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8561
+      "conf": 0.8433
     },
     {
       "file": "renshen/renshen_00118.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.9594
+      "conf": 0.9953
     },
     {
       "file": "renshen/renshen_00120.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.9355
+      "conf": 0.9422
     },
     {
       "file": "renshen/renshen_00128.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.9037
+      "conf": 0.9637
     },
     {
       "file": "renshen/renshen_00136.jpg",
       "true": "renshen",
       "domain": "plant",
-      "pred": "jiegeng",
-      "conf": 0.5138
+      "pred": "renshen",
+      "conf": 0.8566
     },
     {
       "file": "renshen/renshen_00152.jpg",
       "true": "renshen",
       "domain": "root",
-      "pred": "jiegeng",
-      "conf": 0.6704
+      "pred": "renshen",
+      "conf": 0.3092
     },
     {
       "file": "renshen/renshen_00161.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.8186
+      "conf": 0.953
     },
     {
       "file": "renshen/renshen_00164.jpg",
       "true": "renshen",
       "domain": "root",
       "pred": "renshen",
-      "conf": 0.5695
+      "conf": 0.8749
     },
     {
       "file": "renshen/renshen_00170.jpg",
       "true": "renshen",
       "domain": "plant",
       "pred": "renshen",
-      "conf": 0.9371
+      "conf": 0.7365
     },
     {
       "file": "renshen/renshen_00274.jpg",
       "true": "renshen",
       "domain": "root",
-      "pred": "renshen",
-      "conf": 0.7518
+      "pred": "other",
+      "conf": 0.5099
     },
     {
       "file": "xiyangshen/000007.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.4552
+      "pred": "jiegeng",
+      "conf": 0.51
     },
     {
       "file": "xiyangshen/000008.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "jiegeng",
-      "conf": 0.7423
+      "pred": "renshen",
+      "conf": 0.495
     },
     {
       "file": "xiyangshen/000012.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "jiegeng",
-      "conf": 0.6811
+      "conf": 0.8518
     },
     {
       "file": "xiyangshen/000025.jpg",
       "true": "xiyangshen",
       "domain": "plant",
-      "pred": "renshen",
-      "conf": 0.4419
+      "pred": "jiegeng",
+      "conf": 0.9145
     },
     {
       "file": "xiyangshen/000026.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "renshen",
-      "conf": 0.7888
+      "pred": "other",
+      "conf": 0.5854
     },
     {
       "file": "xiyangshen/xiyangshen_00004.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9981
+      "conf": 0.9921
     },
     {
       "file": "xiyangshen/xiyangshen_00006.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.8731
+      "conf": 0.839
     },
     {
       "file": "xiyangshen/xiyangshen_00016.jpg",
       "true": "xiyangshen",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.5155
+      "pred": "jiegeng",
+      "conf": 0.4207
     },
     {
       "file": "xiyangshen/xiyangshen_00022.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.4679
+      "conf": 0.5272
     },
     {
       "file": "xiyangshen/xiyangshen_00033.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.7967
+      "conf": 0.6863
     },
     {
       "file": "xiyangshen/xiyangshen_00036.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.6348
+      "conf": 0.9208
     },
     {
       "file": "xiyangshen/xiyangshen_00047.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "jiegeng",
-      "conf": 0.4866
+      "pred": "xiyangshen",
+      "conf": 0.5996
     },
     {
       "file": "xiyangshen/xiyangshen_00049.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9987
+      "conf": 0.9839
     },
     {
       "file": "xiyangshen/xiyangshen_00053.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "jiegeng",
-      "conf": 0.812
+      "pred": "renshen",
+      "conf": 0.5771
     },
     {
       "file": "xiyangshen/xiyangshen_00054.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9817
+      "conf": 0.9798
     },
     {
       "file": "xiyangshen/xiyangshen_00056.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9794
+      "conf": 0.9077
     },
     {
       "file": "xiyangshen/xiyangshen_00058.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "jiegeng",
-      "conf": 0.7708
+      "conf": 0.5412
     },
     {
       "file": "xiyangshen/xiyangshen_00064.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.7231
+      "pred": "jiegeng",
+      "conf": 0.4599
     },
     {
       "file": "xiyangshen/xiyangshen_00069.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.808
+      "conf": 0.5458
     },
     {
       "file": "xiyangshen/xiyangshen_00077.jpg",
       "true": "xiyangshen",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.5842
+      "pred": "jiegeng",
+      "conf": 0.4509
     },
     {
       "file": "xiyangshen/xiyangshen_00083.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9626
+      "conf": 0.8658
     },
     {
       "file": "xiyangshen/xiyangshen_00085.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9809
+      "conf": 0.5429
     },
     {
       "file": "xiyangshen/xiyangshen_00090.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9948
+      "conf": 0.9898
     },
     {
       "file": "xiyangshen/xiyangshen_00098.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9606
+      "conf": 0.9307
     },
     {
       "file": "xiyangshen/xiyangshen_00105.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9832
+      "conf": 0.9274
     },
     {
       "file": "xiyangshen/xiyangshen_00107.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9077
+      "conf": 0.5201
     },
     {
       "file": "xiyangshen/xiyangshen_00108.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9751
+      "conf": 0.8571
     },
     {
       "file": "xiyangshen/xiyangshen_00127.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9933
+      "conf": 0.9843
     },
     {
       "file": "xiyangshen/xiyangshen_00153.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.852
+      "conf": 0.6634
     },
     {
       "file": "xiyangshen/xiyangshen_00161.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.958
+      "conf": 0.9178
     },
     {
       "file": "xiyangshen/xiyangshen_00162.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9722
+      "conf": 0.9041
     },
     {
       "file": "xiyangshen/xiyangshen_00170.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9979
+      "conf": 0.9951
     },
     {
       "file": "xiyangshen/xiyangshen_00172.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9975
+      "conf": 0.9804
     },
     {
       "file": "xiyangshen/xiyangshen_00177.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.6572
+      "pred": "jiegeng",
+      "conf": 0.5425
     },
     {
       "file": "xiyangshen/xiyangshen_00199.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8706
+      "conf": 0.915
     },
     {
       "file": "xiyangshen/xiyangshen_00204.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9964
+      "conf": 0.9887
     },
     {
       "file": "xiyangshen/xiyangshen_00218.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9182
+      "conf": 0.6019
     },
     {
       "file": "xiyangshen/xiyangshen_00238.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9829
+      "conf": 0.9733
     },
     {
       "file": "xiyangshen/xiyangshen_00245.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8916
+      "conf": 0.9074
     },
     {
       "file": "xiyangshen/xiyangshen_00263.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9968
+      "conf": 0.9967
     },
     {
       "file": "xiyangshen/xiyangshen_00264.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9693
+      "conf": 0.8607
     },
     {
       "file": "xiyangshen/xiyangshen_00268.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9749
+      "conf": 0.9451
     },
     {
       "file": "xiyangshen/xiyangshen_00276.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9847
+      "conf": 0.9835
     },
     {
       "file": "xiyangshen/xiyangshen_00288.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9831
+      "conf": 0.9448
     },
     {
       "file": "xiyangshen/xiyangshen_00293.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9451
+      "conf": 0.9432
     },
     {
       "file": "xiyangshen/xiyangshen_00302.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9794
+      "conf": 0.9881
     },
     {
       "file": "xiyangshen/xiyangshen_00306.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9761
+      "conf": 0.8261
     },
     {
       "file": "xiyangshen/xiyangshen_00313.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.66
+      "conf": 0.7534
     },
     {
       "file": "xiyangshen/xiyangshen_00323.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9906
+      "conf": 0.9838
     },
     {
       "file": "xiyangshen/xiyangshen_00335.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.982
+      "conf": 0.991
     },
     {
       "file": "xiyangshen/xiyangshen_00344.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9913
+      "conf": 0.9813
     },
     {
       "file": "xiyangshen/xiyangshen_00348.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9983
+      "conf": 0.9955
     },
     {
       "file": "xiyangshen/xiyangshen_00356.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8639
+      "conf": 0.9294
     },
     {
       "file": "xiyangshen/xiyangshen_00361.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.7743
+      "conf": 0.5851
     },
     {
       "file": "xiyangshen/xiyangshen_00364.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.925
+      "conf": 0.9897
     },
     {
       "file": "xiyangshen/xiyangshen_00366.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.8058
+      "conf": 0.6539
     },
     {
       "file": "xiyangshen/xiyangshen_00375.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9954
+      "conf": 0.855
     },
     {
       "file": "xiyangshen/xiyangshen_00379.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.7957
+      "conf": 0.4833
     },
     {
       "file": "xiyangshen/xiyangshen_00387.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9976
+      "conf": 0.9895
     },
     {
       "file": "xiyangshen/xiyangshen_00393.jpg",
       "true": "xiyangshen",
       "domain": "plant",
-      "pred": "xiyangshen",
-      "conf": 0.8325
+      "pred": "renshen",
+      "conf": 0.7018
     },
     {
       "file": "xiyangshen/xiyangshen_00395.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.952
+      "conf": 0.91
     },
     {
       "file": "xiyangshen/xiyangshen_00406.jpg",
       "true": "xiyangshen",
       "domain": "root",
-      "pred": "xiyangshen",
-      "conf": 0.5561
+      "pred": "renshen",
+      "conf": 0.4812
     },
     {
       "file": "xiyangshen/xiyangshen_00407.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9512
+      "conf": 0.9845
     },
     {
       "file": "xiyangshen/xiyangshen_00414.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9617
+      "conf": 0.9818
     },
     {
       "file": "xiyangshen/xiyangshen_00419.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.992
+      "conf": 0.9817
     },
     {
       "file": "xiyangshen/xiyangshen_00420.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9987
+      "conf": 0.9915
     },
     {
       "file": "xiyangshen/xiyangshen_00426.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.998
+      "conf": 0.9985
     },
     {
       "file": "xiyangshen/xiyangshen_00428.jpg",
       "true": "xiyangshen",
       "domain": "plant",
       "pred": "xiyangshen",
-      "conf": 0.9805
+      "conf": 0.9519
     },
     {
       "file": "xiyangshen/xiyangshen_00430.jpg",
       "true": "xiyangshen",
       "domain": "root",
       "pred": "xiyangshen",
-      "conf": 0.9664
+      "conf": 0.7989
     }
   ]
 }
