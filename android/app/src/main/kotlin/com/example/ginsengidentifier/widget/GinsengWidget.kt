@@ -30,7 +30,6 @@ import androidx.glance.unit.ColorProvider
 import com.example.ginsengidentifier.MainActivity
 import com.example.ginsengidentifier.data.ScanStore
 import com.example.ginsengidentifier.model.ScanStats
-import androidx.compose.runtime.collectAsState
 
 /**
  * Duolingo 风格桌面小组件：连续天数当主角，今日目标当进度条。
@@ -41,8 +40,9 @@ class GinsengWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         ScanStore.init(context)
         provideContent {
-            val stats = ScanStore.stats.collectAsState().value
-            WidgetContent(stats)
+            // 直接读快照：Glance 的 recomposition 不依赖 Flow，
+            // 数据变化时由 WidgetUpdater.updateAll() 触发重建，最稳。
+            WidgetContent(ScanStore.stats.value)
         }
     }
 }

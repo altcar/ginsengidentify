@@ -72,6 +72,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         ScanStore.init(this)
+        Notifications.ensureChannels(this)
         if (!canDraw(this)) {
             stopSelf()
             return
