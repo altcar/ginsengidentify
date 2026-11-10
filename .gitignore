@@ -1,6 +1,7 @@
 # Build artifacts
 build/
 .gradle/
+.kotlin/
 local.properties
 .idea/
 *.iml
@@ -11,6 +12,9 @@ captures/
 *.apk
 *.aab
 
+# 训练中间产物（ginseng_model.keras 才是最终产物）
+model/best_*.keras
+
 # Python
 __pycache__/
 *.pyc
@@ -20,3 +24,10 @@ __pycache__/
 # OS
 Thumbs.db
 desktop.ini
+
+# Dataset pipeline intermediates (regenerable, large)
+dataset/raw_dl/
+dataset/quarantine/
+dataset/curated/
+dataset/clean/
+dataset/curated_report.csv

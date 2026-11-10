@@ -5,10 +5,63 @@
     "xiyangshen"
   ],
   "num_classes": 3,
-  "test_loss": 0.9326010346412659,
-  "test_accuracy": 0.625,
-  "warmup_epochs": 5,
-  "finetune_epochs": 15,
+  "val_accuracy": 0.8519,
+  "test_accuracy": 0.8485,
+  "test_loss": 0.4164,
+  "confusion_matrix": {
+    "labels": [
+      "jiegeng",
+      "renshen",
+      "xiyangshen"
+    ],
+    "matrix": [
+      [
+        64,
+        0,
+        5
+      ],
+      [
+        5,
+        15,
+        7
+      ],
+      [
+        7,
+        1,
+        61
+      ]
+    ]
+  },
+  "per_class": {
+    "jiegeng": {
+      "precision": 0.8421,
+      "recall": 0.9275,
+      "f1": 0.8828,
+      "support": 69
+    },
+    "renshen": {
+      "precision": 0.9375,
+      "recall": 0.5556,
+      "f1": 0.6977,
+      "support": 27
+    },
+    "xiyangshen": {
+      "precision": 0.8356,
+      "recall": 0.8841,
+      "f1": 0.8592,
+      "support": 69
+    }
+  },
+  "class_weight": {
+    "jiegeng": 0.7956,
+    "renshen": 2.0738,
+    "xiyangshen": 0.7931
+  },
+  "num_train": 759,
+  "warmup_epochs": 8,
+  "finetune_epochs": 25,
   "img_size": 224,
-  "elapsed_sec": 111.5
+  "preprocess": "center_crop_square_then_resize_224|rgb|float32[0,255]",
+  "elapsed_sec": 270.4,
+  "tf_version": "2.21.0"
 }

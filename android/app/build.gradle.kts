@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
 
+    implementation(libs.kotlinx.coroutines.android)
+
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.support)
 
@@ -78,4 +80,8 @@ dependencies {
     implementation(libs.accompanist.permissions)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
 }

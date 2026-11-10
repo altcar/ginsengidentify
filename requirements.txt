@@ -1,10 +1,16 @@
-tensorflow>=2.15
-torch>=2.0
-torchvision>=0.15
+# 训练侧依赖（Python 3.10+）
+# 安装: pip install -r requirements.txt
+
+tensorflow>=2.16          # 训练 + TFLite 导出（Python 3.13 需 >=2.20）
+keras>=3.3
+numpy>=1.26
 Pillow>=10.0
-imagehash>=4.3
-icrawler>=0.6
-bing-image-downloader>=1.1
-numpy
-requests
-tqdm
+requests>=2.31
+tqdm>=4.66
+
+# 数据集清洗用 CLIP 半自动过滤（training/filter_clip.py）
+# 只跑 CPU 版即可:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+torchvision>=0.17
+open_clip_torch>=2.24

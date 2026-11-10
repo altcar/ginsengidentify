@@ -1,201 +1,272 @@
 # 参三味识别 (Ginseng Identifier)
 
-> 一款基于 **Kotlin + Jetpack Compose + TensorFlow Lite** 的端侧三分类 Android 应用：
-> **人参 / 西洋参 / 桔梗**。无需联网，本地推理，模型仅 ~1.2 MB。
+> 端侧三分类 Android 应用：**人参 / 西洋参 / 桔梗**。
+> Kotlin + Jetpack Compose + TensorFlow Lite，离线推理，模型 1.2 MB。
 
 ![arch](https://img.shields.io/badge/Android-24%2B-green) ![kotlin](https://img.shields.io/badge/Kotlin-2.0-purple) ![tflite](https://img.shields.io/badge/TFLite-2.14-orange) ![license](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
-## 📦 项目结构
+## 这一版改了什么
+
+旧版有三个硬伤，这一版逐条修了：
+
+| 问题 | 旧版 | 现在 |
+|---|---|---|
+| 数据集 | 195 张 Bing 抓图，混着广告/包装盒/重复图，test 只有 32 张 | 1086 张，来自 iNaturalist + Wikimedia Commons，CLIP 过滤 + 感知哈希去重 |
+| 准确率 | test **62.5%** | test **84.9%**（Keras）/ **85.5%**（TFLite 端到端） |
+| fine-tune 是假的 | `model.layers[2]` 取错了层，解冻的是数据增强层 | 按名字取 backbone，实测 40 层解冻 |
+| 点拍照就闪退 | Android 11+ 缺 `<queries>` → `ActivityNotFoundException` | 已补 `<queries>` + 异常兜底 |
+| 大图闪退 | 全尺寸 `decodeStream` → OOM | 按 `inSampleSize` 降采样到 1600px，捕获 `OutOfMemoryError` |
+| 卡顿/ANR | 解码 + 推理都在主线程 | 全部挪到 `Dispatchers.IO` |
+| 预处理不一致 | Android 拉伸变形，训练是等比缩放 | 两端统一「中心裁剪 → 双线性缩放到 224」 |
+
+---
+
+## 项目结构
 
 ```
-ginseng-identifier/
-├── README.md                       ← 本文件
-├── requirements.txt                ← Python 训练侧依赖
+ginsengidentify/
+├── README.md
+├── requirements.txt
+├── dataset/
+│   ├── README.md                    ← 数据来源 / 许可 / 规模
+│   ├── raw/                         ← 旧版 Bing 图（来源不明，仅作商品图补充）
+│   ├── processed/{train,val,test}/  ← 训练用切分
+│   └── ...
+├── training/
+│   ├── fetch_dataset.py             ← 从 iNaturalist / Wikimedia 抓图（可断点续抓）
+│   ├── filter_clip.py               ← CLIP 半自动清洗 + 拍摄域标注
+│   ├── clean_strict.py              ← 解码校验 + dHash 去重（含跨类冲突）
+│   ├── prepare_data.py              ← 分层切分 70/15/15
+│   ├── train.py                     ← MobileNetV3Small 两阶段迁移学习
+│   ├── export_tflite.py             ← 导出 float16 TFLite
+│   └── test_tflite.py               ← 端到端验证（预处理与 Kotlin 完全一致）
+├── model/
+│   ├── ginseng_model.tflite         ← ⭐ 端上模型
+│   ├── ginseng_model.keras          ← 可继续训练
+│   ├── labels.txt
+│   ├── metrics.json                 ← 训练指标 + 混淆矩阵
+│   └── eval_tflite.json             ← 逐张推理明细
 ├── scripts/
-│   └── copy_assets.sh              ← 训练完同步模型到 Android assets
-├── dataset/                        ← 训练数据 (raw + processed)
-│   ├── raw/{renshen,xiyangshen,jiegeng}/
-│   └── processed/{train,val,test}/<class>/
-├── training/                       ← Python 训练流水线
-│   ├── fetch_images.py             ← Bing 抓图（中文+英文+学名多关键词）
-│   ├── fetch_more.py               ← 补抓通道（部分失败时用）
-│   ├── normalize_images.py         ← RGBA/灰度统一转 RGB JPEG
-│   ├── clean_strict.py             ← 严格清洗（pHash 去重）
-│   ├── prepare_data.py             ← train/val/test 切分
-│   ├── train.py                    ← MobileNetV3 迁移学习 + 增强
-│   ├── export_tflite.py            ← Keras → TFLite (float16)
-│   └── test_tflite.py              ← 端到端验证 TFLite 推理
-├── model/                          ← 训练产物
-│   ├── ginseng_model.tflite        ← ⭐ Android 端用这个
-│   ├── ginseng_model.keras         ← Keras 完整模型（再训练用）
-│   ├── best_warmup.keras           ← warmup 阶段最优
-│   ├── best_finetune.keras         ← finetune 阶段最优
-│   ├── labels.txt                  ← 类别标签
-│   └── metrics.json                ← 训练指标
-└── android/                        ← ⭐ Android Studio 工程
-    ├── settings.gradle.kts
-    ├── build.gradle.kts
-    ├── gradle.properties
-    ├── gradle/{libs.versions.toml, wrapper/}
-    └── app/
-        ├── build.gradle.kts
-        ├── proguard-rules.pro
-        └── src/main/
-            ├── AndroidManifest.xml
-            ├── assets/
-            │   ├── ginseng_model.tflite  ← (从 model/ 复制)
-            │   └── labels.txt            ← (从 model/ 复制)
-            ├── kotlin/com/example/ginsengidentifier/
-            │   ├── GinsengApp.kt
-            │   ├── MainActivity.kt      ← Compose UI（拍照/相册/结果）
-            │   ├── Classifier.kt        ← TFLite 推理封装
-            │   └── ui/theme/{Color.kt, Theme.kt}
-            └── res/...
+│   ├── sync_assets.py               ← 同步 + 校验 assets
+│   └── copy_assets.sh
+└── android/
+    └── app/src/main/kotlin/com/example/ginsengidentifier/
+        ├── MainActivity.kt          ← Compose UI
+        ├── Classifier.kt            ← TFLite 推理封装
+        └── ui/theme/
 ```
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
-### 前置要求
-- **Android Studio** Hedgehog (2023.1) 或更新
-- **Android SDK** 34
-- **Python** 3.11+（仅训练用）
-- 真机调试更佳（模拟器无相机）
+### 直接构建 APK
 
-### 方式 A：直接使用预训练模型
-1. 用 Android Studio 打开 `android/` 目录
-2. Sync Gradle，等依赖下载
-3. Run → 选真机
-4. **app/src/main/assets/** 里已经有 `ginseng_model.tflite` 和 `labels.txt`
-
-### 方式 B：从零训练
 ```bash
-# 1. 装依赖
+cd android
+./gradlew assembleDebug          # Windows: gradlew.bat assembleDebug
+# 产物: android/app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+需要 JDK 17 + Android SDK 34（`local.properties` 里写 `sdk.dir`，该文件已被 git 忽略）。
+
+### 从零重训
+
+```bash
 pip install -r requirements.txt
 
-# 2. 抓图（首跑可能要 5-10 分钟）
-python training/fetch_images.py --per-keyword 50
-python training/normalize_images.py
-python training/fetch_more.py
-python training/normalize_images.py
-
-# 3. 划分 + 训练
-python training/prepare_data.py
-python training/train.py              # ~2 分钟（CPU）
-python training/export_tflite.py
-python training/test_tflite.py        # 验证模型
-
-# 4. 同步到 Android
-bash scripts/copy_assets.sh
+python training/fetch_dataset.py      # 抓图（约 10 分钟）
+python training/filter_clip.py        # CLIP 过滤噪声
+python training/clean_strict.py       # 去重
+python training/prepare_data.py       # 切分
+python training/train.py              # 训练 + 自动导出 tflite（CPU 约 5.5 分钟）
+python training/test_tflite.py        # 端到端验证
+python scripts/sync_assets.py         # 同步进 Android
 ```
 
 ---
 
-## 📊 模型说明
+## 数据集
+
+详见 [`dataset/README.md`](dataset/README.md)。要点：
+
+- **来源可信**：iNaturalist 按物种 ID 取图（936 张），Wikimedia Commons 按条目搜索（239 张）
+- **清洗不是摆设**：CLIP 把"货架上的包装盒 / 人参鸡汤 / 街头招牌 / 古籍书页"这类
+  "提到了人参但不是药材图"剔掉；跨类近重复（解码后 pHash 距离 ≤6）直接丢弃
+- **规模**：clean 1086 张（455 / 175 / 456），train 759 / val 162 / test 165
+- **两类拍摄域**：整株叶片（≈650 张，主要来自 iNaturalist）与干燥根/切片（≈340 张）
+
+> 为什么必须分域统计：真机拍的是干燥药材，而 iNaturalist 给的是活体植物。
+> 只看总准确率会自我感觉良好。
+
+---
+
+## 模型与指标
 
 | 项 | 值 |
 |---|---|
-| Backbone | MobileNetV3Small (alpha=0.75) |
-| 预训练 | ImageNet |
-| 输入 | 224×224×3 RGB, float32 [0, 255] |
+| Backbone | MobileNetV3Small (alpha=0.75, ImageNet) |
+| 输入 | 224×224×3 float32，RGB，值域 [0,255]（`preprocess_input` 已烧进图里） |
 | 输出 | 3 类 softmax |
-| 参数量 | ~584K (2.23 MB) |
-| TFLite 大小 | **~1.2 MB (float16)** |
-| 推理速度 | 真机 ~10-30 ms (CPU) |
-| 推理设备 | CPU（NNAPI 可选加速） |
+| TFLite | float16，**1208.7 KB** |
+| 训练 | 8 epoch warmup（冻结）+ 25 epoch fine-tune（解冻 40 层），CPU 270.4s |
 
-### 类别与显示
+### test 集（165 张，与训练/验证无重叠）
 
-| labels.txt | 中文显示 | 学名 | 科属 |
-|---|---|---|---|
-| `renshen` | 人参 | *Panax ginseng* | 五加科人参属 |
-| `xiyangshen` | 西洋参 | *Panax quinquefolius* | 五加科人参属 |
-| `jiegeng` | 桔梗 | *Platycodon grandiflorus* | 桔梗科桔梗属 |
+| 类别 | Precision | Recall | F1 | 样本 |
+|---|---:|---:|---:|---:|
+| 桔梗 jiegeng | 0.877 | 0.928 | 0.901 | 69 |
+| 人参 renshen | 0.882 | **0.556** | 0.682 | 27 |
+| 西洋参 xiyangshen | 0.827 | 0.899 | 0.861 | 69 |
 
----
+```
+混淆矩阵（TFLite，行=真实，列=预测）
+                jiegeng   renshen  xiyangshen
+     jiegeng         64         0           5
+     renshen          4        15           8
+  xiyangshen          5         2          62
+```
 
-## 📈 实测数据
+**总体 85.5%**（TFLite，预处理与 Kotlin 逐像素一致）。
 
-当前模型在 **test 集（32 张）** 上的表现：
+### ⚠️ 按数据来源拆分 —— 这一张表最重要
 
-| 指标 | 数值 |
+同一个 test 集，按图片来源拆开后差距极大：
+
+| 来源 | 准确率 |
 |---|---|
-| Test accuracy | **62.5%** |
-| Test loss | 0.93 |
-| 训练耗时 | 111.5 秒（CPU） |
+| iNaturalist + Wikimedia（新数据） | **0.890**（137/154） |
+| 旧版 Bing 商品图（`dataset/raw/`） | **0.364**（4/11） |
 
-**混淆矩阵（test 集）**：
+也就是说：模型在"植物学照片"上很准，但一换到**电商白底商品图**就明显掉，
+说明它学到的不只是药材形态，还包括背景/拍摄风格等域特征。
+样本只有 11 张，置信区间很宽，但方向是明确的 —— **这个模型不能当成
+"拍什么都能认"，它只在自己见过的拍摄域里可靠。**
 
-| true \ pred | jiegeng | renshen | xiyangshen |
-|---|---|---|---|
-| **jiegeng** | 5 | 2 | 4 |
-| **renshen** | 0 | 6 | 5 |
-| **xiyangshen** | 1 | 1 | 8 |
+### 按拍摄域拆分
 
----
+| 域 | 准确率 |
+|---|---|
+| 整株 / 叶片 | 0.876（78/89） |
+| 干燥根 / 切片 | 0.829（63/76） |
 
-## ⚠️ 已知限制
+### 置信度
 
-### 数据是最大瓶颈
-- 训练集仅 134 张（45/类），验证/测试 9-11/类
-- 网络抓回的图含噪音（GIF、广告图、错误标注）
-- **三类视觉非常相似**（特别是干燥切片形态）
-- 实际应用中 60-70% 的准确率是预期范围
-
-### 改进方向
-
-**优先做**（影响最大）：
-1. **扩充数据集** — 每类目标 300+ 张
-   - 多角度拍摄（横切、纵切、整枝、粉末）
-   - 不同光照、背景、相机型号
-   - 手动清洗噪音图（用 `dataset/raw/` 下的 `*.jpg`）
-2. **半自动标注** — 用 CLIP/GroundingDINO 过滤抓回来的图
-
-**进阶做**：
-3. 切分问题为「切片识别」+「整枝识别」两阶段
-4. 试 EfficientNetV2-S（精度更好，~9MB TFLite）
-5. 加 KAN/Attention 头让模型关注细节
+预测正确时平均置信度 0.917，预测错误时 0.679 —— **错的那批也很自信**，
+所以 App 端低于 55% 只给提示、不给"这肯定不是三类之一"的承诺。
 
 ---
 
-## 🛠️ 关键技术点
+## 关于"点开就闪退"
 
-### Android 端推理流程（`Classifier.kt`）
-```kotlin
-val input = ByteBuffer.allocateDirect(1 * 224 * 224 * 3 * 4)
-    .order(ByteOrder.nativeOrder())
-// 喂入 [0, 255] float32 RGB（模型内含 preprocess_input）
-// 输出 3 类 softmax
+代码里逐条修掉的原因（都是真机上必然复现的）：
+
+1. **`<queries>` 缺失（Android 11+）**
+   `MediaStore.ACTION_IMAGE_CAPTURE` 受包可见性限制。没有声明时
+   `launcher.launch()` 直接抛 `ActivityNotFoundException`，没 try/catch 就是闪退。
+   → `AndroidManifest.xml` 补 `<queries>`，`MainActivity` 侧再兜一层异常。
+
+2. **全尺寸解码 OOM**
+   相机原图 4000×3000，`BitmapFactory.decodeStream` 一次吃掉 ~48 MB。
+   低端机直接 `OutOfMemoryError`（不是 Exception，抓不到）。
+   → `decodeSampled()` 先读 bounds 再按 `inSampleSize` 降到 1600px 以内，
+   并且 `catch (Throwable)`。
+
+3. **主线程做重活**
+   解码 + 旋转 + 推理全在 UI 线程，轻则掉帧重则 ANR。
+   → `withContext(Dispatchers.IO)`，主线程只渲染。
+
+4. **输出数组按 `labels.size` 硬编码**
+   模型一换、类别数一变就是 `ArrayIndexOutOfBoundsException`。
+   → `Classifier.load()` 校验输入 shape / dtype / 输出维度，不一致就返回
+   明确中文错误，且 `load()` 捕获 `Throwable`（`UnsatisfiedLinkError` 也能兜住）。
+
+5. **相机 Uri 在配置变更后丢失**
+   旋转屏幕/切深色模式后 Activity 重建，`cameraUri` 变 null，回调拿不到图。
+   → `rememberSaveable` 存 Uri 字符串。
+
+6. **FileProvider 指向不存在的文件**
+   某些相机 App 拿到不存在的 Uri 会失败。
+   → `createNewFile()` 后再 `getUriForFile`，并顺手清理 24h 前的缓存。
+
+7. **推理后 `recycle()` 时序**
+   回收中间 Bitmap 时若与 Compose 绘制同帧，会 `Canvas: trying to use a recycled bitmap`。
+   → 只回收自己创建的中间图，界面正在用的那张不碰。
+
+另外删掉了用不上的 `READ_MEDIA_IMAGES` / `READ_EXTERNAL_STORAGE`：
+相册走 Photo Picker，本来就不需要存储权限。
+
+---
+
+## 验证
+
+### 能自动化跑的部分
+
+```bash
+cd android
+
+./gradlew lintDebug            # 0 error（37 个 warning 全是"依赖有新版本"）
+./gradlew assembleDebug        # APK 35.2 MB
+./gradlew assembleDebugAndroidTest
 ```
 
-### Python 训练 pipeline（`train.py`）
-- **数据增强**：翻转/旋转/缩放/平移/对比度
-- **两阶段训练**：先冻结 backbone warmup 5 epoch，再解冻后 30 层 finetune 15 epoch
-- **MobileNetV3Small alpha=0.75**：速度/精度平衡
+已核对：
 
-### TFLite 导出（`export_tflite.py`）
-```python
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.target_spec.supported_types = [tf.float16]  # 减半体积
+- `aapt2 dump xmltree` → 只申请 `CAMERA`，`<queries>` 含 `IMAGE_CAPTURE`，FileProvider authority 正确
+- APK 内 `assets/ginseng_model.tflite` 的 sha256 与 `model/ginseng_model.tflite` **完全一致**
+- `training/test_tflite.py` 复刻 Kotlin 的预处理（中心裁剪 + 双线性 + [0,255] RGB），
+  在 165 张 test 图上跑出 85.5%，说明"电脑上准、手机上乱猜"的预处理错位已消除
+
+### 真机冒烟测试（需要插上手机 / 开模拟器）
+
+```bash
+cd android
+./gradlew connectedDebugAndroidTest
 ```
 
+`androidTest/.../SmokeTest.kt` 覆盖：
+
+| # | 用例 | 验证的功能 |
+|---|---|---|
+| 1 | `modelLoads` | 模型 + labels 能加载 |
+| 2 | `predictionsAreWellFormed` | 输出 3 类、降序、softmax 归一化、中文名映射 |
+| 3 | `allThreeClassesAreReachable` | 三张代表图至少预测出 2 个不同类别（没退化成常数） |
+| 4 | `sampleAccuracyIsReasonable` | 6 张抽样图至少对 4 张 |
+| 5 | `handlesDegenerateInputs` | 纯白图 / 1×1 / 800×200 非正方形 / 全透明，都不崩 |
+| 6 | `activityLaunchesWithoutCrashing` | Activity 能起来且不立即结束 |
+
+> 本机没有连接设备，所以第 1–6 项目前只完成**编译验证**（`assembleDebugAndroidTest` 通过）。
+> 连上手机后跑一条命令即可得到真机结果。
 ---
 
-## 📜 免责声明
+## 已知限制（别被 85% 骗了）
 
-本应用为学习/演示目的，**不构成医疗或购药建议**。
-人参/西洋参/桔梗的鉴别需结合：
-- 显微特征（横切面结构、粉末特征）
-- 化学成分（人参皂苷、桔梗皂苷等）
-- 气味（西洋参特有清凉感、桔梗微腥）
-- 产地与采购渠道
+1. **商品图域泛化很差**：新来源 89%，旧 Bing 商品图只有 36%（n=11）。
+   这是当前最大的问题 —— 模型对"拍摄风格/背景"过拟合。
+   想真正用于电商图或白底拍摄，必须补对应域的样本再训。
+2. **人参 recall 只有 56%**：人参只有 175 张可用图（*Panax ginseng* 野生记录本来就少），
+   且干燥切片与西洋参极易混淆。模型倾向于漏判人参，而不是误报。
+3. **干燥切片是硬任务**：三者切片在 RGB 上差异极小，专业鉴别依赖显微结构、气味、皂苷含量。
+4. **没有"未知"类**：模型一定在三类里选一个，只能靠 <55% 提示，不能真正拒识。
+5. **训练集含旧版 195 张来源不明的 Bing 图**（`dataset/raw/`），若对外分发需先剔除。
 
-仅凭图像识别结果购药/用药存在风险。中药事关健康，请咨询专业中药师。
+### 下一步优先级
+
+1. **补商品图/白底图**（每类 200+），并单独统计该域准确率 —— 目前最大短板
+2. 补人参数据（目标 400+，重点补干燥整根与切片）
+3. 增加 `other / 未知` 负类，做真正的开集拒识
+4. 试 256 或 288 输入分辨率（`Classifier` 已经从张量读输入尺寸，不用改代码）
+5. 二阶段：先分「整株 / 干燥根」，再分物种
 
 ---
+
+## 免责声明
+
+本应用仅用于学习与演示，**不构成医疗或购药建议**。人参 / 西洋参 / 桔梗的鉴别需要结合
+显微特征、化学成分（人参皂苷、桔梗皂苷）、气味与产地渠道。仅凭图像识别结果购药、用药存在风险。
 
 ## License
 
